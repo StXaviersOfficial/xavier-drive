@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>XavierDrive</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#07080f;--s1:#0e0f1a;--s2:#141522;--border:#1f2035;
+  --a1:#4f8ef7;--a2:#f74f7a;--a3:#4ff7b0;--a4:#f7c44f;
+  --text:#e8eaf6;--muted:#5c6080;--card:#11121e;--r:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(79,142,247,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(79,142,247,.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+.gl{position:fixed;border-radius:50%;filter:blur(110px);pointer-events:none;z-index:0;}
+.gl1{width:500px;height:500px;background:#4f8ef718;top:-150px;left:-100px;}
+.gl2{width:400px;height:400px;background:#f74f7a14;bottom:-100px;right:-80px;}
+
+/* SCREENS */
+.scr{display:none;position:relative;z-index:1;min-height:100vh;}
+.scr.on{display:flex;flex-direction:column;}
+
+/* ══ LOGIN ══ */
+#s-login{align-items:center;justify-content:center;padding:28px 16px;}
+.lw{width:100%;max-width:420px;display:flex;flex-direction:column;gap:28px;animation:up .5s ease;}
+.logo{font-family:'Playfair Display',serif;font-size:34px;font-style:italic;background:linear-gradient(135deg,var(--a1),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px;text-align:center;}
+.logo-sub{color:var(--muted);font-size:13px;text-align:center;margin-top:4px;}
+.lcard{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:22px;box-shadow:0 12px 48px #00000050;}
+.lcard h2{font-family:'Playfair Display',serif;font-size:22px;text-align:center;}
+
+/* ROLE TOGGLE */
+.rtabs{display:flex;gap:4px;background:var(--s1);border-radius:12px;padding:4px;}
+.rtab{flex:1;padding:11px;border:none;border-radius:9px;background:transparent;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s;}
+.rtab.on{background:var(--s2);color:var(--text);box-shadow:0 2px 8px #00000040;}
+
+/* PANES */
+.pane{display:none;flex-direction:column;gap:16px;}
+.pane.on{display:flex;}
+.pane>p{font-size:13px;color:var(--muted);text-align:center;line-height:1.7;}
+
+/* GOOGLE BTN */
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 20px;background:#fff;color:#222;border:none;border-radius:11px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;width:100%;}
+.gbtn:hover{background:#f0f0f0;transform:translateY(-1px);}
+.gbtn img{width:18px;}
+
+/* FIELDS */
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+.field input,.field select,.field textarea{background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;font-family:'Space Grotesk',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border .15s;width:100%;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--a1);}
+.field input::placeholder,.field textarea::placeholder{color:var(--muted);}
+.field select option{background:var(--s1);}
+.field textarea{resize:vertical;min-height:80px;}
+.errmsg{font-size:12px;color:var(--a2);text-align:center;display:none;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:10px;border:none;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;}
+.btn-p{background:linear-gradient(135deg,var(--a1),#6a7fff);color:#fff;width:100%;box-shadow:0 4px 20px #4f8ef730;}
+.btn-p:hover{transform:translateY(-1px);}
+.btn-o{background:transparent;border:1.5px solid var(--border);color:var(--text);}
+.btn-o:hover{border-color:var(--a1);color:var(--a1);}
+.btn-sm{font-size:12px;padding:8px 14px;}
+.btn-d{background:transparent;border:1.5px solid #f74f7a30;color:var(--a2);font-size:12px;padding:8px 12px;}
+.btn-d:hover{background:#f74f7a10;}
+.btn-dl{background:linear-gradient(135deg,var(--a1),#6a7fff);color:#fff;}
+.btn-dl:hover{transform:translateY(-1px);}
+
+/* ══ CLASS SELECT ══ */
+#s-class{align-items:center;justify-content:center;padding:24px 16px;gap:24px;}
+.cbox{width:100%;max-width:460px;display:flex;flex-direction:column;gap:20px;animation:up .4s ease;}
+.cbox h2{font-family:'Playfair Display',serif;font-size:28px;letter-spacing:-1px;text-align:center;}
+.cbox p{color:var(--muted);font-size:13px;text-align:center;}
+.cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.cbtn{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:18px 8px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--text);transition:all .2s;text-align:center;}
+.cbtn:hover,.cbtn.on{border-color:var(--a2);background:#f74f7a10;color:var(--a2);}
+
+/* ══ OVERLAY / MODAL ══ */
+.ov{position:fixed;inset:0;background:#00000088;backdrop-filter:blur(6px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+.ov.on{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px;animation:up .25s ease;box-shadow:0 20px 60px #00000060;}
+.modal h3{font-size:17px;font-weight:700;}
+.mbtns{display:flex;gap:10px;}.mbtns .btn{flex:1;}
+
+/* ══ APP ══ */
+#s-app{background:var(--bg);}
+nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#0e0f1acc;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;backdrop-filter:blur(16px);gap:10px;flex-wrap:wrap;}
+.nl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.nlogo{font-family:'Playfair Display',serif;font-size:18px;font-style:italic;background:linear-gradient(135deg,var(--a1),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.bdg{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.bdg.t{background:#4f8ef718;color:var(--a1);border:1px solid #4f8ef730;}
+.bdg.s{background:#f74f7a18;color:var(--a2);border:1px solid #f74f7a30;}
+.clsbdg{background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--a2);}
+.nr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.upill{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 4px;}
+.upill img{width:26px;height:26px;border-radius:50%;}
+.upill span{font-size:12px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* TAB NAV */
+.tabnav{display:flex;border-bottom:1px solid var(--border);background:#0a0b14;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tabnav::-webkit-scrollbar{display:none;}
+.tn{padding:13px 20px;border:none;background:transparent;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;border-bottom:2px solid transparent;}
+.tn.on{color:var(--a1);border-bottom-color:var(--a1);}
+.tn:hover{color:var(--text);}
+
+.body{max-width:980px;margin:0 auto;padding:24px 18px;display:flex;flex-direction:column;gap:20px;}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
+.ph h2{font-family:'Playfair Display',serif;font-size:26px;letter-spacing:-1px;}
+.ph p{color:var(--muted);font-size:13px;margin-top:4px;}
+
+/* UPLOAD DROP */
+.drop{border:2px dashed var(--border);border-radius:var(--r);padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--card);}
+.drop:hover,.drop.drag{border-color:var(--a1);background:#4f8ef708;}
+.drop .di{font-size:36px;}.drop h3{font-size:15px;font-weight:700;}.drop p{font-size:12px;color:var(--muted);}
+#fi{display:none;}
+
+/* PROGRESS */
+.prog{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:none;flex-direction:column;gap:10px;}
+.prog.on{display:flex;}
+.pt{display:flex;justify-content:space-between;font-size:12px;}
+.pb{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.pf{height:100%;background:linear-gradient(90deg,var(--a1),var(--a2));border-radius:2px;transition:width .25s;width:0%;}
+
+/* FILTER */
+.frow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.fb{font-family:'Space Grotesk',sans-serif;font-size:12px;padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;font-weight:500;}
+.fb.on,.fb:hover{border-color:var(--a1);color:var(--a1);background:#4f8ef710;}
+.srch{background:var(--card);border:1.5px solid var(--border);border-radius:9px;padding:9px 14px;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border .15s;width:100%;}
+.srch:focus{border-color:var(--a1);}
+.srch::placeholder{color:var(--muted);}
+.selrow{display:flex;gap:10px;flex-wrap:wrap;}
+.selrow .field{flex:1;min-width:130px;}
+
+/* FILE GRID */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:12px;}
+.fc{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:10px;transition:all .2s;animation:up .3s ease both;}
+.fc:hover{border-color:var(--a1);transform:translateY(-2px);box-shadow:0 8px 28px #4f8ef710;}
+.fi{font-size:28px;width:48px;height:48px;border-radius:12px;background:var(--s1);display:flex;align-items:center;justify-content:center;}
+.fn{font-size:13px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all;}
+.fm{display:flex;flex-direction:column;gap:3px;}.fm span{font-size:11px;color:var(--muted);}
+.fa{display:flex;gap:8px;margin-top:auto;}.fa .btn{flex:1;font-size:12px;padding:8px 10px;}
+
+/* EMPTY / LOADING */
+.empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);}
+.empty .ei{font-size:48px;margin-bottom:14px;}.empty p{font-size:13px;line-height:1.7;}
+.ldg{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:60px;color:var(--muted);}
+.spin{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--a1);border-radius:50%;animation:spin .7s linear infinite;}
+
+.sh2{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.st{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.cnt{background:var(--s2);color:var(--muted);font-size:11px;padding:2px 8px;border-radius:20px;}
+
+/* ══ GEMINI CHAT ══ */
+.chat-fab{
+  position:fixed;bottom:28px;right:24px;z-index:150;
+  width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#4f8ef7,#a64ff7);
+  box-shadow:0 6px 24px #4f8ef740;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;transition:all .2s;
+}
+.chat-fab:hover{transform:scale(1.08);box-shadow:0 10px 32px #4f8ef760;}
+.chat-fab.on{background:linear-gradient(135deg,#f74f7a,#a64ff7);}
+
+.chat-panel{
+  position:fixed;bottom:96px;right:24px;z-index:150;
+  width:340px;max-width:calc(100vw - 32px);
+  background:var(--card);border:1px solid var(--border);
+  border-radius:20px;box-shadow:0 20px 60px #00000060;
+  display:none;flex-direction:column;overflow:hidden;
+  animation:up .3s ease;max-height:70vh;
+}
+.chat-panel.on{display:flex;}
+
+.chat-header{
+  padding:16px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,#0e0f1a,#141522);
+}
+.chat-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#4f8ef7,#a64ff7);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.chat-header-text{flex:1;}
+.chat-header-text h4{font-size:14px;font-weight:700;}
+.chat-header-text p{font-size:11px;color:var(--muted);}
+.chat-close{background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px;line-height:1;}
+.chat-close:hover{color:var(--text);}
+
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-height:200px;}
+.chat-msgs::-webkit-scrollbar{width:4px;}
+.chat-msgs::-webkit-scrollbar-track{background:transparent;}
+.chat-msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.msg{max-width:85%;display:flex;flex-direction:column;gap:4px;}
+.msg.user{align-self:flex-end;}
+.msg.ai{align-self:flex-start;}
+.msg-bubble{padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.6;}
+.msg.user .msg-bubble{background:linear-gradient(135deg,var(--a1),#6a7fff);color:#fff;border-bottom-right-radius:4px;}
+.msg.ai .msg-bubble{background:var(--s2);border:1px solid var(--border);color:var(--text);border-bottom-left-radius:4px;}
+.msg-time{font-size:10px;color:var(--muted);padding:0 4px;}
+.msg.user .msg-time{text-align:right;}
+
+.typing{display:flex;gap:4px;align-items:center;padding:10px 14px;background:var(--s2);border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:4px;width:fit-content;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite;}
+.dot:nth-child(2){animation-delay:.2s;}.dot:nth-child(3){animation-delay:.4s;}
+
+.chat-input-row{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--s1);}
+.chat-input{flex:1;background:var(--card);border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border .15s;resize:none;max-height:100px;}
+.chat-input:focus{border-color:var(--a1);}
+.chat-input::placeholder{color:var(--muted);}
+.chat-send{background:linear-gradient(135deg,var(--a1),#6a7fff);border:none;border-radius:9px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s;}
+.chat-send:hover{transform:scale(1.05);}
+.chat-send svg{width:16px;height:16px;fill:#fff;}
+
+.gemini-setup{padding:16px;display:flex;flex-direction:column;gap:12px;}
+.gemini-setup p{font-size:12px;color:var(--muted);line-height:1.7;}
+.gemini-setup a{color:var(--a1);}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:500;z-index:500;opacity:0;transition:all .3s;white-space:nowrap;max-width:88vw;box-shadow:0 8px 32px #00000040;}
+.toast.on{transform:translateX(-50%) translateY(0);opacity:1;}
+.toast.ok{border-color:#4ff7b030;color:var(--a3);}.toast.err{border-color:#f74f7a40;color:var(--a2);}
+
+@keyframes up{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes blink{0%,100%{opacity:.3;}50%{opacity:1;}}
+
+@media(max-width:500px){
+  nav{padding:12px 14px;}.body{padding:16px 12px;}
+  .cgrid{grid-template-columns:repeat(2,1fr);}
+  .selrow{flex-direction:column;}.lcard{padding:24px 18px;}
+  .chat-panel{bottom:88px;right:12px;width:calc(100vw - 24px);}
+  .chat-fab{bottom:20px;right:16px;}
+}
+</style>
+</head>
+<body>
+<div class="gl gl1"></div><div class="gl gl2"></div>
+
+<!-- ══ LOGIN ══ -->
+<div id="s-login" class="scr on">
+  <div class="lw">
+    <div>
+      <div class="logo">XavierDrive</div>
+      <div class="logo-sub">St. Xavier's School, Mithapur</div>
+    </div>
+    <div class="lcard">
+      <h2>Sign in to continue</h2>
+
+      <!-- Role toggle -->
+      <div class="rtabs">
+        <button class="rtab on" onclick="setRole('student',this)">📚 Student</button>
+        <button class="rtab" onclick="setRole('teacher',this)">🎓 Teacher</button>
+      </div>
+
+      <!-- Student pane -->
+      <div class="pane on" id="pane-s">
+        <p>Sign in with your school Google account to access class materials.</p>
+        <button class="gbtn" onclick="startAuth('student')">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G"/>
+          Continue with Google
+        </button>
+      </div>
+
+      <!-- Teacher pane: password -->
+      <div class="pane" id="pane-t">
+        <p>Enter the teacher password, then sign in with Google.</p>
+        <div class="field">
+          <label>Teacher Password</label>
+          <input type="password" id="tpass" placeholder="••••••••" onkeydown="if(event.key==='Enter')chkPass()"/>
+        </div>
+        <p class="errmsg" id="perr">Incorrect password.</p>
+        <button class="btn btn-p" onclick="chkPass()">Continue →</button>
+      </div>
+
+      <!-- Teacher pane: google -->
+      <div class="pane" id="pane-tg">
+        <p>✅ Password verified. Now sign in with Google.</p>
+        <button class="gbtn" onclick="startAuth('teacher')">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G"/>
+          Continue with Google
+        </button>
+        <button class="btn btn-o btn-sm" onclick="backPass()" style="margin-top:-4px">← Back</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CLASS SELECT ══ -->
+<div id="s-class" class="scr">
+  <div class="cbox">
+    <div class="logo" style="font-size:22px">XavierDrive</div>
+    <h2>Select Your Class</h2>
+    <p>You can change this anytime from the app</p>
+    <div class="cgrid" id="cgrid"></div>
+  </div>
+</div>
+
+<!-- CHANGE CLASS MODAL -->
+<div class="ov" id="ov-class">
+  <div class="modal">
+    <h3>📚 Change Class</h3>
+    <div class="cgrid" id="cgrid2" style="margin-top:4px"></div>
+    <button class="btn btn-o" onclick="closeOv('ov-class')">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="s-app" class="scr">
+  <nav>
+    <div class="nl">
+      <div class="nlogo">XavierDrive</div>
+      <span class="bdg" id="nbdg"></span>
+      <span class="clsbdg" id="clsdsp" style="display:none"></span>
+    </div>
+    <div class="nr" id="nr"></div>
+  </nav>
+  <div class="tabnav" id="tabnav"></div>
+  <div class="body" id="mbody"></div>
+</div>
+
+<!-- GEMINI FAB -->
+<button class="chat-fab" id="chat-fab" onclick="toggleChat()" style="display:none" title="Ask Gemini AI">✨</button>
+
+<!-- GEMINI PANEL -->
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-header">
+    <div class="chat-avatar">✨</div>
+    <div class="chat-header-text">
+      <h4>Gemini AI Support</h4>
+      <p>Ask anything about your studies</p>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div id="chat-body">
+    <!-- Filled by JS: either setup or messages -->
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ CONSTANTS ════════════════════════════════════
+const CLIENT_ID='762121679919-s4cmslli48n3qdh4dnbicnob9j4p7298.apps.googleusercontent.com';
+const TEACHER_PASS='teacher@xaviers';
+const SCOPES='https://www.googleapis.com/auth/drive';
+const FOLDER='XavierDrive_School';
+const CLASSES=['Class 1','Class 2','Class 3','Class 4','Class 5','Class 6','Class 7','Class 8','Class 9','Class 10','Class 11','Class 12'];
+const SUBJECTS=['Mathematics','Science','Physics','Chemistry','Biology','English','Hindi','Social Studies','History','Geography','Computer Science','Economics','Accountancy','Other'];
+
+// ══ STATE ════════════════════════════════════════
+let role=null,token=null,rootId=null,allFiles=[],sClass=null,curTab='files',curFilter='all',fClass='',fSubj='',fChap='';
+let chatOpen=false,chatHistory=[],geminiKey='AIzaSyC-UHcvr5Xuy_UFB7lRxSET-mzHSP3Rh-c';
+
+// ══ STORAGE ══════════════════════════════════════
+const lc=()=>{try{return JSON.parse(localStorage.getItem('xd')||'{}');}catch{return{};}};
+const sc=o=>localStorage.setItem('xd',JSON.stringify({...lc(),...o}));
+
+// ══ INIT ═════════════════════════════════════════
+function init(){
+  buildGrids();
+  // OAuth callback
+  const p=new URLSearchParams(location.hash.replace('#',''));
+  const at=p.get('access_token');
+  if(at){
+    token=at;
+    role=sessionStorage.getItem('pr')||'student';
+    sessionStorage.removeItem('pr');
+    sc({tok:at,tt:Date.now(),role});
+    history.replaceState(null,'',location.pathname);
+    afterLogin();
+    return;
+  }
+  // Restore session
+  const c=lc();
+  if(c.tok&&c.tt&&(Date.now()-c.tt<55*60*1000)&&c.role){
+    token=c.tok;role=c.role;
+    if(c.cls)sClass=c.cls;
+    if(c.gkey)geminiKey=c.gkey;
+    if(role==='student'&&!sClass)show('s-class');
+    else enterApp();
+    return;
+  }
+  show('s-login');
+}
+
+function buildGrids(){
+  ['cgrid','cgrid2'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(el)el.innerHTML=CLASSES.map(c=>`<button class="cbtn" onclick="${i===0?'selClass':'chgClass'}('${c}')">${c}</button>`).join('');
+  });
+}
+
+// ══ SCREENS ══════════════════════════════════════
+const show=id=>{document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on');};
+const closeOv=id=>document.getElementById(id).classList.remove('on');
+
+// ══ LOGIN ════════════════════════════════════════
+function setRole(r,btn){
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  document.getElementById('pane-s').classList.toggle('on',r==='student');
+  document.getElementById('pane-t').classList.toggle('on',r==='teacher');
+  document.getElementById('pane-tg').classList.remove('on');
+  document.getElementById('perr').style.display='none';
+}
+
+function chkPass(){
+  if(document.getElementById('tpass').value===TEACHER_PASS){
+    document.getElementById('pane-t').classList.remove('on');
+    document.getElementById('pane-tg').classList.add('on');
+    document.getElementById('perr').style.display='none';
+  }else{
+    document.getElementById('perr').style.display='block';
+    document.getElementById('tpass').value='';
+  }
+}
+function backPass(){
+  document.getElementById('pane-tg').classList.remove('on');
+  document.getElementById('pane-t').classList.add('on');
+  document.getElementById('tpass').value='';
+}
+
+// ══ AUTH ═════════════════════════════════════════
+function startAuth(r){
+  sessionStorage.setItem('pr',r);
+  const red=location.href.split('#')[0].split('?')[0];
+  location.href='https://accounts.google.com/o/oauth2/v2/auth?'+new URLSearchParams({client_id:CLIENT_ID,redirect_uri:red,response_type:'token',scope:SCOPES,include_granted_scopes:'true',prompt:'select_account'});
+}
+
+async function afterLogin(){
+  try{
+    const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${token}`}});
+    const u=await r.json();sc({uname:u.name,upic:u.picture,uemail:u.email});
+  }catch{}
+  const c=lc();if(c.gkey)geminiKey=c.gkey;
+  if(role==='teacher'){await ensureRoot();enterApp();}
+  else{if(lc().cls){sClass=lc().cls;enterApp();}else show('s-class');}
+}
+
+function signOut(){
+  if(token)try{google.accounts.oauth2.revoke(token,()=>{});}catch{}
+  token=null;role=null;sClass=null;
+  sc({tok:null,tt:null,role:null,cls:null});
+  document.getElementById('chat-fab').style.display='none';
+  document.getElementById('chat-panel').classList.remove('on');
+  // Reset login UI
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pane-s').classList.add('on');
+  document.querySelectorAll('.rtab').forEach((b,i)=>b.classList.toggle('on',i===0));
+  document.getElementById('tpass').value='';
+  show('s-login');
+}
+
+// ══ CLASS ════════════════════════════════════════
+function selClass(c){sClass=c;sc({cls:c});enterApp();}
+function chgClass(c){
+  sClass=c;sc({cls:c});closeOv('ov-class');
+  document.getElementById('clsdsp').textContent=c;
+  fClass=c;if(curTab==='files')renderStudentFiles();
+}
+function openChgClass(){
+  document.querySelectorAll('#cgrid2 .cbtn').forEach(b=>b.classList.toggle('on',b.textContent===sClass));
+  document.getElementById('ov-class').classList.add('on');
+}
+
+// ══ ENTER APP ════════════════════════════════════
+function enterApp(){
+  show('s-app');
+  const bdg=document.getElementById('nbdg');
+  bdg.textContent=role==='teacher'?'🎓 Teacher':'📚 Student';
+  bdg.className='bdg '+(role==='teacher'?'t':'s');
+  if(role==='student'){const cd=document.getElementById('clsdsp');cd.textContent=sClass||'';cd.style.display='';}
+  else document.getElementById('clsdsp').style.display='none';
+  const c=lc();if(!rootId&&c.rid)rootId=c.rid;
+  buildNav();buildTabs();
+  document.getElementById('chat-fab').style.display='';
+  initChat();
+  switchTab('files');
+}
+
+function buildNav(){
+  const c=lc();
+  const pic=c.upic?`<img src="${esc(c.upic)}" alt=""/>`:'';
+  document.getElementById('nr').innerHTML=`
+    <div class="upill">${pic}<span>${esc(c.uname||'User')}</span></div>
+    ${role==='student'?`<button class="btn btn-o btn-sm" onclick="openChgClass()">Change Class</button>`:''}
+    <button class="btn btn-o btn-sm" onclick="signOut()">Sign out</button>
+  `;
+}
+
+function buildTabs(){
+  document.getElementById('tabnav').innerHTML=role==='teacher'
+    ?`<button class="tn" data-tab="files" onclick="switchTab('files')">📁 Files</button><button class="tn" data-tab="upload" onclick="switchTab('upload')">📤 Upload</button>`
+    :`<button class="tn" data-tab="files" onclick="switchTab('files')">📁 Files</button>`;
+}
+
+function switchTab(tab){
+  curTab=tab;curFilter='all';fSubj='';fChap='';
+  document.querySelectorAll('.tn').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  document.getElementById('mbody').innerHTML='';
+  if(tab==='files')role==='teacher'?renderTeacherFiles():renderStudentFiles();
+  else if(tab==='upload')renderUpload();
+}
+
+// ══ DRIVE ════════════════════════════════════════
+async function drv(url,method='GET',body=null){
+  const o={method,headers:{Authorization:`Bearer ${token}`}};
+  if(body){o.headers['Content-Type']='application/json';o.body=JSON.stringify(body);}
+  const r=await fetch(url,o);
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||r.statusText);}
+  if(r.status===204)return{};return r.json();
+}
+
+async function ensureRoot(){
+  if(rootId)return rootId;
+  const c=lc();if(c.rid){rootId=c.rid;return rootId;}
+  try{
+    const q=`mimeType='application/vnd.google-apps.folder' and name='${FOLDER}' and trashed=false`;
+    const r=await drv('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)');
+    if(r.files?.length)rootId=r.files[0].id;
+    else{const cr=await drv('https://www.googleapis.com/drive/v3/files','POST',{name:FOLDER,mimeType:'application/vnd.google-apps.folder'});rootId=cr.id;toast('📁 Drive folder created','ok');}
+    await mkPub(rootId);sc({rid:rootId});
+  }catch(e){toast('Folder error: '+e.message,'err');}
+  return rootId;
+}
+
+async function mkPub(id){
+  try{await fetch(`https://www.googleapis.com/drive/v3/files/${id}/permissions`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({role:'reader',type:'anyone'})});}catch{}
+}
+
+const gp=(f,k)=>{if(!f.description)return'';try{return JSON.parse(f.description)[k]||'';}catch{return'';}};
+const gh=()=>{const c=lc();if(token)return{Authorization:`Bearer ${token}`};if(c.tok&&c.tt&&Date.now()-c.tt<55*60*1000)return{Authorization:`Bearer ${c.tok}`};return{};};
+
+// ══ TEACHER FILES ════════════════════════════════
+function renderTeacherFiles(){
+  document.getElementById('mbody').innerHTML=`
+    <div class="ph"><div><h2>All Files</h2><p>All uploaded class materials</p></div><button class="btn btn-o btn-sm" onclick="loadTFiles()">↻ Refresh</button></div>
+    <div class="selrow">
+      <div class="field"><label>Class</label><select onchange="fClass=this.value;applyTF()"><option value="">All Classes</option>${CLASSES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="field"><label>Subject</label><select onchange="fSubj=this.value;applyTF()"><option value="">All Subjects</option>${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+    </div>
+    <input class="srch" type="text" placeholder="Search by name, subject or chapter..." oninput="applyTF()"/>
+    <div class="frow">
+      <button class="fb on" onclick="setFT('all',this)">All</button>
+      <button class="fb" onclick="setFT('pdf',this)">PDF</button>
+      <button class="fb" onclick="setFT('doc',this)">Docs</button>
+      <button class="fb" onclick="setFT('image',this)">Images</button>
+      <button class="fb" onclick="setFT('video',this)">Video</button>
+    </div>
+    <div class="sh2"><div class="st">Files <span class="cnt" id="tcnt">0</span></div></div>
+    <div class="grid" id="tgrid"><div class="ldg"><div class="spin"></div><span>Loading...</span></div></div>
+  `;
+  loadTFiles();
+}
+
+async function loadTFiles(){
+  if(!rootId)await ensureRoot();
+  const g=document.getElementById('tgrid');if(!g)return;
+  g.innerHTML='<div class="ldg"><div class="spin"></div><span>Loading...</span></div>';
+  try{
+    const q=`'${rootId}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`;
+    const r=await drv(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,size,modifiedTime,description)&orderBy=modifiedTime+desc&pageSize=500`);
+    allFiles=r.files||[];applyTF();
+  }catch(e){if(g)g.innerHTML=`<div class="empty"><div class="ei">❌</div><p>${esc(e.message)}</p></div>`;}
+}
+
+function applyTF(){
+  const q=document.querySelector('.srch')?.value||'';
+  let fs=allFiles;
+  if(fClass)fs=fs.filter(f=>gp(f,'cls')===fClass);
+  if(fSubj)fs=fs.filter(f=>gp(f,'sub')===fSubj);
+  if(q)fs=fs.filter(f=>f.name.toLowerCase().includes(q.toLowerCase())||gp(f,'sub').toLowerCase().includes(q.toLowerCase())||gp(f,'chp').toLowerCase().includes(q.toLowerCase()));
+  if(curFilter!=='all')fs=fs.filter(f=>mType(f,curFilter));
+  const c=document.getElementById('tcnt');if(c)c.textContent=fs.length;
+  renderGrid(fs,'tgrid',true);
+}
+function setFT(t,btn){curFilter=t;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');applyTF();}
+
+// ══ STUDENT FILES ════════════════════════════════
+function renderStudentFiles(){
+  document.getElementById('mbody').innerHTML=`
+    <div class="ph"><div><h2>Class Materials</h2><p>${esc(sClass||'All Classes')}</p></div><button class="btn btn-o btn-sm" onclick="loadSFiles()">↻ Refresh</button></div>
+    <div class="selrow">
+      <div class="field"><label>Subject</label><select onchange="fSubj=this.value;applySTF()"><option value="">All Subjects</option>${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      <div class="field"><label>Chapter</label><input type="text" class="field input" placeholder="Search chapter..." style="background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:14px;outline:none;width:100%;" oninput="fChap=this.value;applySTF()"/></div>
+    </div>
+    <input class="srch" type="text" placeholder="Search files..." oninput="applySTF()"/>
+    <div class="frow">
+      <button class="fb on" onclick="setSTF('all',this)">All</button>
+      <button class="fb" onclick="setSTF('pdf',this)">PDF</button>
+      <button class="fb" onclick="setSTF('doc',this)">Docs</button>
+      <button class="fb" onclick="setSTF('image',this)">Images</button>
+      <button class="fb" onclick="setSTF('video',this)">Video</button>
+    </div>
+    <div class="sh2"><div class="st">Files <span class="cnt" id="scnt">0</span></div></div>
+    <div class="grid" id="sgrid"><div class="ldg"><div class="spin"></div><span>Loading...</span></div></div>
+  `;
+  loadSFiles();
+}
+
+async function loadSFiles(){
+  const c=lc();const fid=c.rid;
+  const g=document.getElementById('sgrid');
+  if(!fid){if(g)g.innerHTML='<div class="empty"><div class="ei">⏳</div><p>No files yet.<br/>Ask your teacher to upload files first.</p></div>';return;}
+  if(g)g.innerHTML='<div class="ldg"><div class="spin"></div><span>Loading...</span></div>';
+  try{
+    const q=`'${fid}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`;
+    const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,size,modifiedTime,description)&orderBy=modifiedTime+desc&pageSize=500`,{headers:gh()});
+    const d=await r.json();
+    if(d.error){if(g)g.innerHTML='<div class="empty"><div class="ei">🔒</div><p>Files not accessible.<br/>Ask your teacher to re-login.</p></div>';return;}
+    allFiles=d.files||[];applySTF();
+  }catch(e){if(g)g.innerHTML=`<div class="empty"><div class="ei">❌</div><p>${esc(e.message)}</p></div>`;}
+}
+
+function applySTF(){
+  const q=document.querySelector('.srch')?.value||'';
+  let fs=allFiles;
+  if(sClass)fs=fs.filter(f=>{const cl=gp(f,'cls');return!cl||cl===sClass;});
+  if(fSubj)fs=fs.filter(f=>gp(f,'sub')===fSubj);
+  if(fChap)fs=fs.filter(f=>gp(f,'chp').toLowerCase().includes(fChap.toLowerCase()));
+  if(q)fs=fs.filter(f=>f.name.toLowerCase().includes(q.toLowerCase())||gp(f,'sub').toLowerCase().includes(q.toLowerCase())||gp(f,'chp').toLowerCase().includes(q.toLowerCase()));
+  if(curFilter!=='all')fs=fs.filter(f=>mType(f,curFilter));
+  const c=document.getElementById('scnt');if(c)c.textContent=fs.length;
+  renderGrid(fs,'sgrid',false);
+}
+function setSTF(t,btn){curFilter=t;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');applySTF();}
+
+// ══ GRID ═════════════════════════════════════════
+function mType(f,t){
+  const m=f.mimeType||'',n=f.name.toLowerCase();
+  if(t==='pdf')return m.includes('pdf')||n.endsWith('.pdf');
+  if(t==='doc')return m.includes('word')||m.includes('document')||/\.(docx?|pptx?|txt)$/.test(n);
+  if(t==='image')return m.startsWith('image/');
+  if(t==='video')return m.startsWith('video/');
+  return true;
+}
+
+function renderGrid(files,id,isT){
+  const g=document.getElementById(id);if(!g)return;
+  if(!files.length){g.innerHTML='<div class="empty"><div class="ei">📭</div><p>No files found.</p></div>';return;}
+  g.innerHTML=files.map((f,i)=>{
+    const cl=gp(f,'cls'),sub=gp(f,'sub'),chp=gp(f,'chp');
+    return `<div class="fc" style="animation-delay:${i*.04}s">
+      <div class="fi">${ico(f.mimeType,f.name)}</div>
+      <div class="fn" title="${esc(f.name)}">${esc(f.name)}</div>
+      <div class="fm">
+        ${cl?`<span>📚 ${esc(cl)}</span>`:''}
+        ${sub?`<span>📖 ${esc(sub)}</span>`:''}
+        ${chp?`<span>📑 ${esc(chp)}</span>`:''}
+        <span>${sz(f.size)} · ${dt(f.modifiedTime)}</span>
+      </div>
+      <div class="fa">
+        <button class="btn btn-dl" onclick="dlFile('${f.id}','${esc2(f.name)}')">⬇ Download</button>
+        ${isT?`<button class="btn btn-d" onclick="delFile('${f.id}','${esc2(f.name)}')">🗑</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══ UPLOAD ═══════════════════════════════════════
+function renderUpload(){
+  document.getElementById('mbody').innerHTML=`
+    <div class="ph"><div><h2>Upload Files</h2><p>Tag files by class, subject and chapter</p></div></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px;display:flex;flex-direction:column;gap:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px">📂 File Details</div>
+      <div class="selrow">
+        <div class="field"><label>Class *</label><select id="ucls"><option value="">Select class...</option>${CLASSES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div class="field"><label>Subject</label><select id="usub"><option value="">Select subject...</option>${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      </div>
+      <div class="field"><label>Chapter / Topic (optional)</label><input type="text" id="uchp" placeholder="e.g. Chapter 3 - Photosynthesis"/></div>
+    </div>
+    <div class="drop" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="onDrop(event)">
+      <div class="di">☁️</div><h3>Drop files here or tap to browse</h3><p>PDF, DOCX, PPTX, images, videos — anything</p>
+    </div>
+    <input type="file" id="fi" multiple onchange="onSel(event)"/>
+    <div class="prog" id="prog"><div class="pt"><span id="pn">Uploading...</span><span id="pp">0%</span></div><div class="pb"><div class="pf" id="pb"></div></div></div>
+  `;
+  ensureRoot();
+}
+
+function onDrop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag');upAll([...e.dataTransfer.files]);}
+function onSel(e){upAll([...e.target.files]);e.target.value='';}
+
+async function upAll(files){
+  if(!token){toast('Not signed in','err');return;}
+  const cls=document.getElementById('ucls')?.value||'';
+  if(!cls){toast('Please select a class first','err');return;}
+  const sub=document.getElementById('usub')?.value||'';
+  const chp=document.getElementById('uchp')?.value?.trim()||'';
+  await ensureRoot();
+  for(const f of files)await upOne(f,cls,sub,chp);
+}
+
+function upOne(file,cls,sub,chp){
+  return new Promise(res=>{
+    const prog=document.getElementById('prog'),bar=document.getElementById('pb'),pct=document.getElementById('pp'),fn=document.getElementById('pn');
+    if(prog)prog.classList.add('on');if(fn)fn.textContent=file.name;if(bar)bar.style.width='0%';if(pct)pct.textContent='0%';
+    const meta={name:file.name,parents:[rootId],description:JSON.stringify({cls,sub,chp})};
+    const form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+    form.append('file',file);
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST','https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+    xhr.setRequestHeader('Authorization',`Bearer ${token}`);
+    xhr.upload.onprogress=e=>{if(e.lengthComputable){const p=Math.round(e.loaded/e.total*100);if(bar)bar.style.width=p+'%';if(pct)pct.textContent=p+'%';}};
+    xhr.onload=()=>{
+      if(prog)prog.classList.remove('on');
+      if(xhr.status===200){toast(`✅ Uploaded: ${file.name}`,'ok');try{mkPub(JSON.parse(xhr.responseText).id);}catch{}}
+      else toast(`❌ Failed: ${file.name}`,'err');res();
+    };
+    xhr.onerror=()=>{if(prog)prog.classList.remove('on');toast('Upload error','err');res();};
+    xhr.send(form);
+  });
+}
+
+async function dlFile(id,name){
+  toast(`⬇ ${name}`);
+  try{
+    const r=await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`,{headers:gh()});
+    if(!r.ok)throw new Error();
+    const blob=await r.blob();const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href);
+    toast(`✅ Downloaded: ${name}`,'ok');
+  }catch{window.open(`https://drive.google.com/uc?export=download&id=${id}`,'_blank');}
+}
+
+async function delFile(id,name){
+  if(!confirm(`Delete "${name}"?`))return;
+  try{await drv(`https://www.googleapis.com/drive/v3/files/${id}`,'DELETE');toast('🗑 Deleted','ok');loadTFiles();}
+  catch{toast('Delete failed','err');}
+}
+
+// ══ GEMINI CHAT ══════════════════════════════════
+function initChat(){
+  const c=lc();geminiKey=c.gkey||geminiKey;
+  renderChatBody();
+}
+
+function toggleChat(){
+  chatOpen=!chatOpen;
+  const panel=document.getElementById('chat-panel');
+  const fab=document.getElementById('chat-fab');
+  panel.classList.toggle('on',chatOpen);
+  fab.classList.toggle('on',chatOpen);
+  if(chatOpen){renderChatBody();setTimeout(()=>{const i=document.getElementById('cinput');if(i)i.focus();},100);}
+}
+
+function renderChatBody(){
+  const body=document.getElementById('chat-body');
+  if(!geminiKey){
+    body.innerHTML=`
+      <div class="gemini-setup">
+        <p>To enable AI support, paste your <strong style="color:var(--text)">Gemini API key</strong> below.</p>
+        <p>Get one free at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> → Get API Key</p>
+        <div class="field"><label>Gemini API Key</label><input type="text" id="gkey-inp" placeholder="AIza..." style="background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:13px;outline:none;width:100%;"/></div>
+        <button class="btn btn-p" onclick="saveGKey()" style="margin-top:4px">Save & Start Chatting</button>
+      </div>
+    `;
+    return;
+  }
+  body.innerHTML=`
+    <div class="chat-msgs" id="cmsgs"></div>
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="cinput" rows="1" placeholder="Ask anything about your studies..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}"></textarea>
+      <button class="chat-send" onclick="sendMsg()">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  `;
+  // Restore history
+  renderMsgs();
+  // Welcome message if no history
+  if(!chatHistory.length){
+    addAIMsg(`Hi! I'm your Gemini AI assistant 👋\nI can help you with:\n• Explaining concepts from your subjects\n• Answering study questions\n• Summarizing topics\n\nWhat would you like to learn today?`);
+  }
+}
+
+function saveGKey(){
+  const k=document.getElementById('gkey-inp')?.value?.trim();
+  if(!k){toast('Enter your API key','err');return;}
+  geminiKey=k;sc({gkey:k});
+  renderChatBody();
+}
+
+function addAIMsg(text){
+  chatHistory.push({role:'ai',text,time:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})});
+  renderMsgs();
+}
+
+function renderMsgs(){
+  const el=document.getElementById('cmsgs');if(!el)return;
+  el.innerHTML=chatHistory.map(m=>`
+    <div class="msg ${m.role}">
+      <div class="msg-bubble">${esc(m.text).replace(/\n/g,'<br/>')}</div>
+      <div class="msg-time">${m.time}</div>
+    </div>
+  `).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+function showTyping(){
+  const el=document.getElementById('cmsgs');if(!el)return;
+  const d=document.createElement('div');
+  d.className='msg ai';d.id='typing-bubble';
+  d.innerHTML='<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+
+function removeTyping(){
+  const t=document.getElementById('typing-bubble');if(t)t.remove();
+}
+
+async function sendMsg(){
+  const inp=document.getElementById('cinput');if(!inp)return;
+  const text=inp.value.trim();if(!text)return;
+  inp.value='';
+  const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  chatHistory.push({role:'user',text,time});
+  renderMsgs();showTyping();
+  try{
+    const sysPrompt=`You are a helpful academic AI assistant for St. Xavier's School, Mithapur. You help students and teachers with academic queries, subject explanations, and study support. Keep responses concise, clear and appropriate for school students. Current user role: ${role}${sClass?', Class: '+sClass:''}.`;
+    const msgs=chatHistory.filter(m=>m.role!=='system').slice(-10).map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.text}]}));
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({system_instruction:{parts:[{text:sysPrompt}]},contents:msgs})
+    });
+    const d=await r.json();
+    removeTyping();
+    if(d.error){addAIMsg('Error: '+d.error.message);return;}
+    const reply=d.candidates?.[0]?.content?.parts?.[0]?.text||'Sorry, no response.';
+    addAIMsg(reply);
+  }catch(e){removeTyping();addAIMsg('Connection error. Check your API key and internet.');}
+}
+
+// ══ HELPERS ══════════════════════════════════════
+function ico(m,n){
+  m=m||'';n=(n||'').toLowerCase();
+  if(m.includes('pdf')||n.endsWith('.pdf'))return'📄';
+  if(m.includes('word')||n.endsWith('.docx'))return'📝';
+  if(m.includes('presentation')||n.endsWith('.pptx'))return'📊';
+  if(m.includes('spreadsheet')||n.endsWith('.xlsx'))return'📈';
+  if(m.startsWith('image/'))return'🖼️';
+  if(m.startsWith('video/'))return'🎥';
+  if(m.startsWith('audio/'))return'🎵';
+  if(m.includes('zip'))return'🗜️';
+  return'📁';
+}
+const sz=b=>{if(!b)return'—';b=parseInt(b);if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';if(b<1073741824)return(b/1048576).toFixed(1)+' MB';return(b/1073741824).toFixed(1)+' GB';};
+const dt=d=>{if(!d)return'—';return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});};
+const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc2=s=>(s||'').replace(/'/g,"\\'").replace(/"/g,'\\"');
+
+let _tt;
+function toast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast on '+(type||'');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('on'),3500);
+}
+
+window.onload=init;
+</script>
+</body>
+</html>
