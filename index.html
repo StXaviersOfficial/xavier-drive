@@ -19,11 +19,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .gl1{width:500px;height:500px;background:#4f8ef718;top:-150px;left:-100px;}
 .gl2{width:400px;height:400px;background:#f74f7a14;bottom:-100px;right:-80px;}
 
-/* SCREENS */
 .scr{display:none;position:relative;z-index:1;min-height:100vh;}
 .scr.on{display:flex;flex-direction:column;}
 
-/* ══ LOGIN ══ */
 #s-login{align-items:center;justify-content:center;padding:28px 16px;}
 .lw{width:100%;max-width:420px;display:flex;flex-direction:column;gap:28px;animation:up .5s ease;}
 .logo{font-family:'Playfair Display',serif;font-size:34px;font-style:italic;background:linear-gradient(135deg,var(--a1),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px;text-align:center;}
@@ -31,22 +29,18 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .lcard{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:22px;box-shadow:0 12px 48px #00000050;}
 .lcard h2{font-family:'Playfair Display',serif;font-size:22px;text-align:center;}
 
-/* ROLE TOGGLE */
 .rtabs{display:flex;gap:4px;background:var(--s1);border-radius:12px;padding:4px;}
 .rtab{flex:1;padding:11px;border:none;border-radius:9px;background:transparent;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s;}
 .rtab.on{background:var(--s2);color:var(--text);box-shadow:0 2px 8px #00000040;}
 
-/* PANES */
 .pane{display:none;flex-direction:column;gap:16px;}
 .pane.on{display:flex;}
 .pane>p{font-size:13px;color:var(--muted);text-align:center;line-height:1.7;}
 
-/* GOOGLE BTN */
 .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 20px;background:#fff;color:#222;border:none;border-radius:11px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;width:100%;}
 .gbtn:hover{background:#f0f0f0;transform:translateY(-1px);}
 .gbtn img{width:18px;}
 
-/* FIELDS */
 .field{display:flex;flex-direction:column;gap:6px;}
 .field label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
 .field input,.field select,.field textarea{background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;font-family:'Space Grotesk',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border .15s;width:100%;}
@@ -56,7 +50,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .field textarea{resize:vertical;min-height:80px;}
 .errmsg{font-size:12px;color:var(--a2);text-align:center;display:none;}
 
-/* BUTTONS */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:10px;border:none;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;}
 .btn-p{background:linear-gradient(135deg,var(--a1),#6a7fff);color:#fff;width:100%;box-shadow:0 4px 20px #4f8ef730;}
 .btn-p:hover{transform:translateY(-1px);}
@@ -68,7 +61,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .btn-dl{background:linear-gradient(135deg,var(--a1),#6a7fff);color:#fff;}
 .btn-dl:hover{transform:translateY(-1px);}
 
-/* ══ CLASS SELECT ══ */
 #s-class{align-items:center;justify-content:center;padding:24px 16px;gap:24px;}
 .cbox{width:100%;max-width:460px;display:flex;flex-direction:column;gap:20px;animation:up .4s ease;}
 .cbox h2{font-family:'Playfair Display',serif;font-size:28px;letter-spacing:-1px;text-align:center;}
@@ -77,14 +69,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .cbtn{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:18px 8px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--text);transition:all .2s;text-align:center;}
 .cbtn:hover,.cbtn.on{border-color:var(--a2);background:#f74f7a10;color:var(--a2);}
 
-/* ══ OVERLAY / MODAL ══ */
 .ov{position:fixed;inset:0;background:#00000088;backdrop-filter:blur(6px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
 .ov.on{display:flex;}
 .modal{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px;animation:up .25s ease;box-shadow:0 20px 60px #00000060;}
 .modal h3{font-size:17px;font-weight:700;}
 .mbtns{display:flex;gap:10px;}.mbtns .btn{flex:1;}
 
-/* ══ APP ══ */
 #s-app{background:var(--bg);}
 nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#0e0f1acc;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;backdrop-filter:blur(16px);gap:10px;flex-wrap:wrap;}
 .nl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -98,7 +88,6 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 .upill img{width:26px;height:26px;border-radius:50%;}
 .upill span{font-size:12px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-/* TAB NAV */
 .tabnav{display:flex;border-bottom:1px solid var(--border);background:#0a0b14;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .tabnav::-webkit-scrollbar{display:none;}
 .tn{padding:13px 20px;border:none;background:transparent;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;border-bottom:2px solid transparent;}
@@ -110,20 +99,17 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 .ph h2{font-family:'Playfair Display',serif;font-size:26px;letter-spacing:-1px;}
 .ph p{color:var(--muted);font-size:13px;margin-top:4px;}
 
-/* UPLOAD DROP */
 .drop{border:2px dashed var(--border);border-radius:var(--r);padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--card);}
 .drop:hover,.drop.drag{border-color:var(--a1);background:#4f8ef708;}
 .drop .di{font-size:36px;}.drop h3{font-size:15px;font-weight:700;}.drop p{font-size:12px;color:var(--muted);}
 #fi{display:none;}
 
-/* PROGRESS */
 .prog{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:none;flex-direction:column;gap:10px;}
 .prog.on{display:flex;}
 .pt{display:flex;justify-content:space-between;font-size:12px;}
 .pb{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
 .pf{height:100%;background:linear-gradient(90deg,var(--a1),var(--a2));border-radius:2px;transition:width .25s;width:0%;}
 
-/* FILTER */
 .frow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .fb{font-family:'Space Grotesk',sans-serif;font-size:12px;padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;font-weight:500;}
 .fb.on,.fb:hover{border-color:var(--a1);color:var(--a1);background:#4f8ef710;}
@@ -133,7 +119,6 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 .selrow{display:flex;gap:10px;flex-wrap:wrap;}
 .selrow .field{flex:1;min-width:130px;}
 
-/* FILE GRID */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:12px;}
 .fc{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:10px;transition:all .2s;animation:up .3s ease both;}
 .fc:hover{border-color:var(--a1);transform:translateY(-2px);box-shadow:0 8px 28px #4f8ef710;}
@@ -142,7 +127,6 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 .fm{display:flex;flex-direction:column;gap:3px;}.fm span{font-size:11px;color:var(--muted);}
 .fa{display:flex;gap:8px;margin-top:auto;}.fa .btn{flex:1;font-size:12px;padding:8px 10px;}
 
-/* EMPTY / LOADING */
 .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);}
 .empty .ei{font-size:48px;margin-bottom:14px;}.empty p{font-size:13px;line-height:1.7;}
 .ldg{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:60px;color:var(--muted);}
@@ -152,7 +136,6 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 .st{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
 .cnt{background:var(--s2);color:var(--muted);font-size:11px;padding:2px 8px;border-radius:20px;}
 
-/* ══ GEMINI CHAT ══ */
 .chat-fab{
   position:fixed;bottom:28px;right:24px;z-index:150;
   width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;
@@ -212,11 +195,6 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 .chat-send:hover{transform:scale(1.05);}
 .chat-send svg{width:16px;height:16px;fill:#fff;}
 
-.gemini-setup{padding:16px;display:flex;flex-direction:column;gap:12px;}
-.gemini-setup p{font-size:12px;color:var(--muted);line-height:1.7;}
-.gemini-setup a{color:var(--a1);}
-
-/* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:500;z-index:500;opacity:0;transition:all .3s;white-space:nowrap;max-width:88vw;box-shadow:0 8px 32px #00000040;}
 .toast.on{transform:translateX(-50%) translateY(0);opacity:1;}
 .toast.ok{border-color:#4ff7b030;color:var(--a3);}.toast.err{border-color:#f74f7a40;color:var(--a2);}
@@ -245,12 +223,10 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
     </div>
     <div class="lcard">
       <h2>Sign in to continue</h2>
-
       <div class="rtabs">
         <button class="rtab on" onclick="setRole('student',this)">📚 Student</button>
         <button class="rtab" onclick="setRole('teacher',this)">🎓 Teacher</button>
       </div>
-
       <div class="pane on" id="pane-s">
         <p>Sign in with your school Google account to access class materials.</p>
         <button class="gbtn" onclick="startAuth('student')">
@@ -258,7 +234,6 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
           Continue with Google
         </button>
       </div>
-
       <div class="pane" id="pane-t">
         <p>Enter the teacher password, then sign in with Google.</p>
         <div class="field">
@@ -268,7 +243,6 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
         <p class="errmsg" id="perr">Incorrect password.</p>
         <button class="btn btn-p" onclick="chkPass()">Continue →</button>
       </div>
-
       <div class="pane" id="pane-tg">
         <p>✅ Password verified. Now sign in with Google.</p>
         <button class="gbtn" onclick="startAuth('teacher')">
@@ -322,14 +296,12 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
     </div>
     <button class="chat-close" onclick="toggleChat()">✕</button>
   </div>
-  <div id="chat-body">
-    </div>
+  <div id="chat-body"></div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// ══ CONSTANTS ════════════════════════════════════
 const CLIENT_ID='762121679919-s4cmslli48n3qdh4dnbicnob9j4p7298.apps.googleusercontent.com';
 const TEACHER_PASS='teacher@xaviers';
 const SCOPES='https://www.googleapis.com/auth/drive';
@@ -337,18 +309,14 @@ const FOLDER='XavierDrive_School';
 const CLASSES=['Class 1','Class 2','Class 3','Class 4','Class 5','Class 6','Class 7','Class 8','Class 9','Class 10','Class 11','Class 12'];
 const SUBJECTS=['Mathematics','Science','Physics','Chemistry','Biology','English','Hindi','Social Studies','History','Geography','Computer Science','Economics','Accountancy','Other'];
 
-// ══ STATE ════════════════════════════════════════
 let role=null,token=null,rootId=null,allFiles=[],sClass=null,curTab='files',curFilter='all',fClass='',fSubj='',fChap='';
 let chatOpen=false,chatHistory=[],geminiKey='AIzaSyC-UHcvr5Xuy_UFB7lRxSET-mzHSP3Rh-c';
 
-// ══ STORAGE ══════════════════════════════════════
 const lc=()=>{try{return JSON.parse(localStorage.getItem('xd')||'{}');}catch{return{};}};
 const sc=o=>localStorage.setItem('xd',JSON.stringify({...lc(),...o}));
 
-// ══ INIT ═════════════════════════════════════════
 function init(){
   buildGrids();
-  // OAuth callback
   const p=new URLSearchParams(location.hash.replace('#',''));
   const at=p.get('access_token');
   if(at){
@@ -360,12 +328,10 @@ function init(){
     afterLogin();
     return;
   }
-  // Restore session
   const c=lc();
   if(c.tok&&c.tt&&(Date.now()-c.tt<55*60*1000)&&c.role){
     token=c.tok;role=c.role;
     if(c.cls)sClass=c.cls;
-    // Note: We ignore c.gkey because we have the hardcoded key now
     if(role==='student'&&!sClass)show('s-class');
     else enterApp();
     return;
@@ -380,17 +346,14 @@ function buildGrids(){
   });
 }
 
-// ══ SCREENS ══════════════════════════════════════
 const show=id=>{document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on');};
 const closeOv=id=>document.getElementById(id).classList.remove('on');
 
-// ══ LOGIN ════════════════════════════════════════
 function setRole(r,btn){
   document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
   document.getElementById('pane-s').classList.toggle('on',r==='student');
   document.getElementById('pane-t').classList.toggle('on',r==='teacher');
   document.getElementById('pane-tg').classList.remove('on');
-  document.getElementById('perr').style.display='none';
 }
 
 function chkPass(){
@@ -403,13 +366,13 @@ function chkPass(){
     document.getElementById('tpass').value='';
   }
 }
+
 function backPass(){
   document.getElementById('pane-tg').classList.remove('on');
   document.getElementById('pane-t').classList.add('on');
   document.getElementById('tpass').value='';
 }
 
-// ══ AUTH ═════════════════════════════════════════
 function startAuth(r){
   sessionStorage.setItem('pr',r);
   const red=location.href.split('#')[0].split('?')[0];
@@ -421,7 +384,6 @@ async function afterLogin(){
     const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${token}`}});
     const u=await r.json();sc({uname:u.name,upic:u.picture,uemail:u.email});
   }catch{}
-  // Ignored storage gemini key check to use the hardcoded one
   if(role==='teacher'){await ensureRoot();enterApp();}
   else{if(lc().cls){sClass=lc().cls;enterApp();}else show('s-class');}
 }
@@ -432,7 +394,6 @@ function signOut(){
   sc({tok:null,tt:null,role:null,cls:null});
   document.getElementById('chat-fab').style.display='none';
   document.getElementById('chat-panel').classList.remove('on');
-  // Reset login UI
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
   document.getElementById('pane-s').classList.add('on');
   document.querySelectorAll('.rtab').forEach((b,i)=>b.classList.toggle('on',i===0));
@@ -440,7 +401,6 @@ function signOut(){
   show('s-login');
 }
 
-// ══ CLASS ════════════════════════════════════════
 function selClass(c){sClass=c;sc({cls:c});enterApp();}
 function chgClass(c){
   sClass=c;sc({cls:c});closeOv('ov-class');
@@ -452,7 +412,6 @@ function openChgClass(){
   document.getElementById('ov-class').classList.add('on');
 }
 
-// ══ ENTER APP ════════════════════════════════════
 function enterApp(){
   show('s-app');
   const bdg=document.getElementById('nbdg');
@@ -491,7 +450,6 @@ function switchTab(tab){
   else if(tab==='upload')renderUpload();
 }
 
-// ══ DRIVE ════════════════════════════════════════
 async function drv(url,method='GET',body=null){
   const o={method,headers:{Authorization:`Bearer ${token}`}};
   if(body){o.headers['Content-Type']='application/json';o.body=JSON.stringify(body);}
@@ -520,7 +478,6 @@ async function mkPub(id){
 const gp=(f,k)=>{if(!f.description)return'';try{return JSON.parse(f.description)[k]||'';}catch{return'';}};
 const gh=()=>{const c=lc();if(token)return{Authorization:`Bearer ${token}`};if(c.tok&&c.tt&&Date.now()-c.tt<55*60*1000)return{Authorization:`Bearer ${c.tok}`};return{};};
 
-// ══ TEACHER FILES ════════════════════════════════
 function renderTeacherFiles(){
   document.getElementById('mbody').innerHTML=`
     <div class="ph"><div><h2>All Files</h2><p>All uploaded class materials</p></div><button class="btn btn-o btn-sm" onclick="loadTFiles()">↻ Refresh</button></div>
@@ -565,7 +522,6 @@ function applyTF(){
 }
 function setFT(t,btn){curFilter=t;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');applyTF();}
 
-// ══ STUDENT FILES ════════════════════════════════
 function renderStudentFiles(){
   document.getElementById('mbody').innerHTML=`
     <div class="ph"><div><h2>Class Materials</h2><p>${esc(sClass||'All Classes')}</p></div><button class="btn btn-o btn-sm" onclick="loadSFiles()">↻ Refresh</button></div>
@@ -614,7 +570,6 @@ function applySTF(){
 }
 function setSTF(t,btn){curFilter=t;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');applySTF();}
 
-// ══ GRID ═════════════════════════════════════════
 function mType(f,t){
   const m=f.mimeType||'',n=f.name.toLowerCase();
   if(t==='pdf')return m.includes('pdf')||n.endsWith('.pdf');
@@ -626,7 +581,7 @@ function mType(f,t){
 
 function renderGrid(files,id,isT){
   const g=document.getElementById(id);if(!g)return;
-  if(!files.length){g.innerHTML='<div class="empty"><div class="ei">🗭</div><p>No files found.</p></div>';return;}
+  if(!files.length){g.innerHTML='<div class="empty"><div class="ei">📭</div><p>No files found.</p></div>';return;}
   g.innerHTML=files.map((f,i)=>{
     const cl=gp(f,'cls'),sub=gp(f,'sub'),chp=gp(f,'chp');
     return `<div class="fc" style="animation-delay:${i*.04}s">
@@ -646,7 +601,6 @@ function renderGrid(files,id,isT){
   }).join('');
 }
 
-// ══ UPLOAD ═══════════════════════════════════════
 function renderUpload(){
   document.getElementById('mbody').innerHTML=`
     <div class="ph"><div><h2>Upload Files</h2><p>Tag files by class, subject and chapter</p></div></div>
@@ -719,11 +673,7 @@ async function delFile(id,name){
   catch{toast('Delete failed','err');}
 }
 
-// ══ GEMINI CHAT ══════════════════════════════════
-function initChat(){
-  // We skip checking lc().gkey because we have the hardcoded key now
-  renderChatBody();
-}
+function initChat(){ renderChatBody(); }
 
 function toggleChat(){
   chatOpen=!chatOpen;
@@ -736,7 +686,6 @@ function toggleChat(){
 
 function renderChatBody(){
   const body=document.getElementById('chat-body');
-  // Setup is skipped because geminiKey is hardcoded
   body.innerHTML=`
     <div class="chat-msgs" id="cmsgs"></div>
     <div class="chat-input-row">
@@ -746,20 +695,10 @@ function renderChatBody(){
       </button>
     </div>
   `;
-  // Restore history
   renderMsgs();
-  // Welcome message if no history
   if(!chatHistory.length){
     addAIMsg(`Hi! I'm your Gemini AI assistant 👋\nI can help you with:\n• Explaining concepts from your subjects\n• Answering study questions\n• Summarizing topics\n\nWhat would you like to learn today?`);
   }
-}
-
-// saveGKey() is kept for internal logic but bypassed in render
-function saveGKey(){
-  const k=document.getElementById('gkey-inp')?.value?.trim();
-  if(!k){toast('Enter your API key','err');return;}
-  geminiKey=k;sc({gkey:k});
-  renderChatBody();
 }
 
 function addAIMsg(text){
@@ -793,26 +732,40 @@ function removeTyping(){
 async function sendMsg(){
   const inp=document.getElementById('cinput');if(!inp)return;
   const text=inp.value.trim();if(!text)return;
+  
+  inp.disabled = true;
   inp.value='';
+  
   const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
   chatHistory.push({role:'user',text,time});
   renderMsgs();showTyping();
+  
   try{
-    const sysPrompt=`You are a helpful academic AI assistant for St. Xavier's School, Mithapur. You help students and teachers with academic queries, subject explanations, and study support. Keep responses concise, clear and appropriate for school students. Current user role: ${role}${sClass?', Class: '+sClass:''}.`;
-    const msgs=chatHistory.filter(m=>m.role!=='system').slice(-10).map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.text}]}));
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
+    const sysPrompt=`You are a helpful academic AI assistant for St. Xavier's School, Mithapur. Keep responses concise. Current user role: ${role}${sClass?', Class: '+sClass:''}.`;
+    const msgs=chatHistory.filter(m=>m.role!=='system').slice(-6).map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.text}]}));
+    
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({system_instruction:{parts:[{text:sysPrompt}]},contents:msgs})
     });
+    
     const d=await r.json();
     removeTyping();
-    if(d.error){addAIMsg('Error: '+d.error.message);return;}
-    const reply=d.candidates?.[0]?.content?.parts?.[0]?.text||'Sorry, no response.';
-    addAIMsg(reply);
-  }catch(e){removeTyping();addAIMsg('Connection error. Check your API key and internet.');}
+    
+    if(d.error){
+      if(d.error.message.includes('quota')) addAIMsg('⚠️ API Quota exceeded. Please wait 10 seconds before asking again.');
+      else addAIMsg('Error: '+d.error.message);
+      return;
+    }
+    addAIMsg(d.candidates?.[0]?.content?.parts?.[0]?.text||'Sorry, no response.');
+  }catch(e){
+    removeTyping();
+    addAIMsg('Connection error. Try again in a moment.');
+  } finally {
+    setTimeout(() => { inp.disabled = false; inp.focus(); }, 3000);
+  }
 }
 
-// ══ HELPERS ══════════════════════════════════════
 function ico(m,n){
   m=m||'';n=(n||'').toLowerCase();
   if(m.includes('pdf')||n.endsWith('.pdf'))return'📄';
