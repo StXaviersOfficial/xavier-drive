@@ -136,6 +136,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 .st{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
 .cnt{background:var(--s2);color:var(--muted);font-size:11px;padding:2px 8px;border-radius:20px;}
 
+/* GEMINI CHAT UI */
 .chat-fab{
   position:fixed;bottom:28px;right:24px;z-index:150;
   width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;
@@ -568,6 +569,7 @@ function applySTF(){
   const c=document.getElementById('scnt');if(c)c.textContent=fs.length;
   renderGrid(fs,'sgrid',false);
 }
+
 function setSTF(t,btn){curFilter=t;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');applySTF();}
 
 function mType(f,t){
@@ -673,6 +675,7 @@ async function delFile(id,name){
   catch{toast('Delete failed','err');}
 }
 
+// ══ GEMINI AI LOGIC ══════════════════════════════
 function initChat(){ renderChatBody(); }
 
 function toggleChat(){
@@ -697,7 +700,7 @@ function renderChatBody(){
   `;
   renderMsgs();
   if(!chatHistory.length){
-    addAIMsg(`Hi! I'm your Gemini AI assistant 👋\nI can help you with:\n• Explaining concepts from your subjects\n• Answering study questions\n• Summarizing topics\n\nWhat would you like to learn today?`);
+    addAIMsg(`Hi! I'm your Gemini AI assistant 👋\nI can help you with:\n• Explaining subjects\n• Study questions\n• Summarizing topics\n\nWhat would you like to learn today?`);
   }
 }
 
@@ -741,10 +744,11 @@ async function sendMsg(){
   renderMsgs();showTyping();
   
   try{
-    const sysPrompt=`You are a helpful academic AI assistant for St. Xavier's School, Mithapur. Keep responses concise. Current user role: ${role}${sClass?', Class: '+sClass:''}.`;
+    const sysPrompt=`You are a helpful academic assistant for St. Xavier's School. Current user: ${role}${sClass?', '+sClass:''}.`;
     const msgs=chatHistory.filter(m=>m.role!=='system').slice(-6).map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.text}]}));
     
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,{
+    // Switch to stable V1 endpoint for 1.5 Flash
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({system_instruction:{parts:[{text:sysPrompt}]},contents:msgs})
     });
@@ -753,11 +757,11 @@ async function sendMsg(){
     removeTyping();
     
     if(d.error){
-      if(d.error.message.includes('quota')) addAIMsg('⚠️ API Quota exceeded. Please wait 10 seconds before asking again.');
+      if(d.error.message.includes('quota')) addAIMsg('⚠️ Quota exceeded. Please wait 10 seconds.');
       else addAIMsg('Error: '+d.error.message);
       return;
     }
-    addAIMsg(d.candidates?.[0]?.content?.parts?.[0]?.text||'Sorry, no response.');
+    addAIMsg(d.candidates?.[0]?.content?.parts?.[0]?.text||'No response.');
   }catch(e){
     removeTyping();
     addAIMsg('Connection error. Try again in a moment.');
@@ -766,19 +770,16 @@ async function sendMsg(){
   }
 }
 
+// ══ HELPERS ══════════════════════════════════════
 function ico(m,n){
   m=m||'';n=(n||'').toLowerCase();
   if(m.includes('pdf')||n.endsWith('.pdf'))return'📄';
   if(m.includes('word')||n.endsWith('.docx'))return'📝';
-  if(m.includes('presentation')||n.endsWith('.pptx'))return'📊';
-  if(m.includes('spreadsheet')||n.endsWith('.xlsx'))return'📈';
   if(m.startsWith('image/'))return'🖼️';
   if(m.startsWith('video/'))return'🎥';
-  if(m.startsWith('audio/'))return'🎵';
-  if(m.includes('zip'))return'🗜️';
   return'📁';
 }
-const sz=b=>{if(!b)return'—';b=parseInt(b);if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';if(b<1073741824)return(b/1048576).toFixed(1)+' MB';return(b/1073741824).toFixed(1)+' GB';};
+const sz=b=>{if(!b)return'—';b=parseInt(b);if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';};
 const dt=d=>{if(!d)return'—';return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});};
 const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const esc2=s=>(s||'').replace(/'/g,"\\'").replace(/"/g,'\\"');
