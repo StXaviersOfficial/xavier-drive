@@ -136,7 +136,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 .st{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
 .cnt{background:var(--s2);color:var(--muted);font-size:11px;padding:2px 8px;border-radius:20px;}
 
-/* GEMINI CHAT UI */
+/* GEMINI CHAT */
 .chat-fab{
   position:fixed;bottom:28px;right:24px;z-index:150;
   width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;
@@ -675,7 +675,7 @@ async function delFile(id,name){
   catch{toast('Delete failed','err');}
 }
 
-// ══ GEMINI AI LOGIC ══════════════════════════════
+// ══ GEMINI AI ════════════════════════════════════
 function initChat(){ renderChatBody(); }
 
 function toggleChat(){
@@ -700,7 +700,7 @@ function renderChatBody(){
   `;
   renderMsgs();
   if(!chatHistory.length){
-    addAIMsg(`Hi! I'm your Gemini AI assistant 👋\nI can help you with:\n• Explaining subjects\n• Study questions\n• Summarizing topics\n\nWhat would you like to learn today?`);
+    addAIMsg(`Hi! I'm your Gemini AI assistant 👋\nI can help you with study questions and more.\n\nWhat would you like to learn today?`);
   }
 }
 
@@ -744,13 +744,22 @@ async function sendMsg(){
   renderMsgs();showTyping();
   
   try{
-    const sysPrompt=`You are a helpful academic assistant for St. Xavier's School. Current user: ${role}${sClass?', '+sClass:''}.`;
-    const msgs=chatHistory.filter(m=>m.role!=='system').slice(-6).map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.text}]}));
+    const sysPrompt = `You are a helpful academic assistant for St. Xavier's School. Keep responses concise. Current role: ${role}${sClass?', '+sClass:''}.`;
     
-    // Switch to stable V1 endpoint for 1.5 Flash
+    // For V1 Stable: Merge system prompt into the first user message
+    const history = chatHistory.filter(m=>m.role!=='system').slice(-6).map(m=>({
+        role: m.role==='user'?'user':'model',
+        parts: [{text: m.text}]
+    }));
+    
+    // Injecting the system context into the first message of the request for stable V1 support
+    if (history.length > 0) {
+        history[0].parts[0].text = `[System Context: ${sysPrompt}]\n\n${history[0].parts[0].text}`;
+    }
+
     const r=await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({system_instruction:{parts:[{text:sysPrompt}]},contents:msgs})
+      body:JSON.stringify({ contents: history })
     });
     
     const d=await r.json();
@@ -788,7 +797,7 @@ let _tt;
 function toast(msg,type=''){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast on '+(type||'');
-  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('on'),3500);
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('on'), 3500);
 }
 
 window.onload=init;
