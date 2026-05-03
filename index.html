@@ -1,0 +1,2102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>XavierDrive</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{
+  --bg:#07080f;--s1:#0e0f1a;--s2:#141522;--border:#1f2035;
+  --a1:#4f8ef7;--a2:#f74f7a;--a3:#4ff7b0;--a4:#f7c44f;
+  --text:#e8eaf6;--muted:#5c6080;--card:#11121e;--r:14px;
+  --nav-bg:#0e0f1acc;--tabnav-bg:#0a0b14;--sidebar-bg:#09091200;
+  --chat-panel-bg:#11121e;--input-bg:#11121e;--input-row-bg:#0e0f1a;
+  --chat-main-bg:transparent;--chat-body-bg:#07080f;
+}
+body.light{
+  --bg:#f0f2f8;--s1:#e4e8f4;--s2:#d8ddf0;--border:#c4cae0;
+  --text:#1a1c2e;--muted:#7a80a0;--card:#ffffff;
+  --nav-bg:#ffffffcc;--tabnav-bg:#e8ecf8;--sidebar-bg:#f8f9fd;
+  --chat-panel-bg:#ffffff;--input-bg:#f0f2f8;--input-row-bg:#e8ecf8;
+  --chat-body-bg:#f0f2f8;
+}
+body.light::before{background-image:linear-gradient(rgba(79,142,247,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(79,142,247,.06) 1px,transparent 1px);}
+body.light .gl1{background:#4f8ef722;}
+body.light .gl2{background:#f74f7a18;}
+body.light nav{background:var(--nav-bg);}
+body.light .tabnav{background:var(--tabnav-bg);}
+body.light .msg.user .msg-bubble{background:#d1d5db;color:#1a1c2e;}
+body.light .msg.ai .msg-bubble{background:transparent;border:none;color:var(--text);}
+body.light .chat-panel{background:var(--chat-panel-bg);}
+body.light .chat-header{background:linear-gradient(135deg,#f0f2f8,#e4e8f4);}
+body.light .chat-input-row{background:var(--input-row-bg);}
+body.light .chat-input{background:var(--card);color:var(--text);}
+body.light .sessions-sidebar{background:#f4f6fc;border-right-color:var(--border);}
+body.light .sess-item:hover{background:var(--s2);}
+body.light .sess-item.active{background:var(--s1);}
+body.light .chat-msgs{background:var(--chat-body-bg);}
+body.light .chat-toolbar{background:var(--s1);}
+body.light .attach-bar{background:#e8ecf8cc;}
+body.light .gbtn{background:#f0f0f0;color:#333;}
+body.light .gbtn:hover{background:#e0e0e0;}
+body.light .lcard{box-shadow:0 12px 48px #0000001a;}
+body.light .fc:hover{box-shadow:0 8px 28px #4f8ef720;}
+body.light .rtab.on{box-shadow:0 2px 8px #0000015;}
+
+/* Theme toggle button */
+.theme-btn{background:transparent;border:1.5px solid var(--border);border-radius:20px;padding:5px 11px;font-size:13px;cursor:pointer;color:var(--muted);transition:all .2s;line-height:1;display:flex;align-items:center;gap:5px;}
+.theme-btn:hover{border-color:var(--a1);color:var(--a1);}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(79,142,247,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(79,142,247,.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+.gl{position:fixed;border-radius:50%;filter:blur(110px);pointer-events:none;z-index:0;}
+.gl1{width:500px;height:500px;background:#4f8ef718;top:-150px;left:-100px;}
+.gl2{width:400px;height:400px;background:#f74f7a14;bottom:-100px;right:-80px;}
+
+/* SCREENS */
+.scr{display:none;position:relative;z-index:1;min-height:100vh;}
+.scr.on{display:flex;flex-direction:column;}
+
+/* ══ LOGIN ══ */
+#s-login{align-items:center;justify-content:center;padding:28px 16px;}
+.lw{width:100%;max-width:420px;display:flex;flex-direction:column;gap:28px;animation:up .5s ease;}
+.logo{font-family:'Playfair Display',serif;font-size:34px;font-style:italic;background:linear-gradient(135deg,var(--a1),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px;text-align:center;}
+.logo-sub{color:var(--muted);font-size:13px;text-align:center;margin-top:4px;}
+.lcard{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:22px;box-shadow:0 12px 48px #00000050;}
+.lcard h2{font-family:'Playfair Display',serif;font-size:22px;text-align:center;}
+
+/* ROLE TOGGLE */
+.rtabs{display:flex;gap:4px;background:var(--s1);border-radius:12px;padding:4px;}
+.rtab{flex:1;padding:11px;border:none;border-radius:9px;background:transparent;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s;}
+.rtab.on{background:var(--s2);color:var(--text);box-shadow:0 2px 8px #00000040;}
+
+/* PANES */
+.pane{display:none;flex-direction:column;gap:16px;}
+.pane.on{display:flex;}
+.pane>p{font-size:13px;color:var(--muted);text-align:center;line-height:1.7;}
+
+/* GOOGLE BTN */
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 20px;background:#fff;color:#222;border:none;border-radius:11px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;width:100%;}
+.gbtn:hover{background:#f0f0f0;transform:translateY(-1px);}
+.gbtn img{width:18px;}
+
+/* FIELDS */
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+.field input,.field select,.field textarea{background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;font-family:'Space Grotesk',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border .15s;width:100%;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--a1);}
+.field input::placeholder,.field textarea::placeholder{color:var(--muted);}
+.field select option{background:var(--s1);}
+.field textarea{resize:vertical;min-height:80px;}
+.errmsg{font-size:12px;color:var(--a2);text-align:center;display:none;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:10px;border:none;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;}
+.btn-p{background:linear-gradient(135deg,var(--a1),#6a7fff);color:#fff;width:100%;box-shadow:0 4px 20px #4f8ef730;}
+.btn-p:hover{transform:translateY(-1px);}
+.btn-o{background:transparent;border:1.5px solid var(--border);color:var(--text);}
+.btn-o:hover{border-color:var(--a1);color:var(--a1);}
+.btn-sm{font-size:12px;padding:8px 14px;}
+.btn-d{background:transparent;border:1.5px solid #f74f7a30;color:var(--a2);font-size:12px;padding:8px 12px;}
+.btn-d:hover{background:#f74f7a10;}
+.btn-dl{background:linear-gradient(135deg,var(--a1),#6a7fff);color:#fff;}
+.btn-dl:hover{transform:translateY(-1px);}
+
+/* ══ CLASS SELECT ══ */
+#s-class{align-items:center;justify-content:center;padding:24px 16px;gap:24px;}
+.cbox{width:100%;max-width:460px;display:flex;flex-direction:column;gap:20px;animation:up .4s ease;}
+.cbox h2{font-family:'Playfair Display',serif;font-size:28px;letter-spacing:-1px;text-align:center;}
+.cbox p{color:var(--muted);font-size:13px;text-align:center;}
+.cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.cbtn{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:18px 8px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--text);transition:all .2s;text-align:center;}
+.cbtn:hover,.cbtn.on{border-color:var(--a2);background:#f74f7a10;color:var(--a2);}
+
+/* ══ OVERLAY / MODAL ══ */
+.ov{position:fixed;inset:0;background:#00000088;backdrop-filter:blur(6px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+.ov.on{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px;animation:up .25s ease;box-shadow:0 20px 60px #00000060;}
+.modal h3{font-size:17px;font-weight:700;}
+.mbtns{display:flex;gap:10px;}.mbtns .btn{flex:1;}
+
+/* ══ APP ══ */
+#s-app{background:var(--bg);}
+nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#0e0f1acc;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;backdrop-filter:blur(16px);gap:10px;flex-wrap:wrap;}
+.nl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.nlogo{font-family:'Playfair Display',serif;font-size:18px;font-style:italic;background:linear-gradient(135deg,var(--a1),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.bdg{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.bdg.t{background:#4f8ef718;color:var(--a1);border:1px solid #4f8ef730;}
+.bdg.s{background:#f74f7a18;color:var(--a2);border:1px solid #f74f7a30;}
+.clsbdg{background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--a2);}
+.nr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.upill{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 4px;}
+.upill img{width:26px;height:26px;border-radius:50%;}
+.upill span{font-size:12px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* TAB NAV */
+.tabnav{display:flex;border-bottom:1px solid var(--border);background:#0a0b14;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tabnav::-webkit-scrollbar{display:none;}
+.tn{padding:13px 20px;border:none;background:transparent;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;border-bottom:2px solid transparent;}
+.tn.on{color:var(--a1);border-bottom-color:var(--a1);}
+.tn:hover{color:var(--text);}
+
+.body{max-width:980px;margin:0 auto;padding:24px 18px;display:flex;flex-direction:column;gap:20px;}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
+.ph h2{font-family:'Playfair Display',serif;font-size:26px;letter-spacing:-1px;}
+.ph p{color:var(--muted);font-size:13px;margin-top:4px;}
+
+/* UPLOAD DROP */
+.drop{border:2px dashed var(--border);border-radius:var(--r);padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--card);}
+.drop:hover,.drop.drag{border-color:var(--a1);background:#4f8ef708;}
+.drop .di{font-size:36px;}.drop h3{font-size:15px;font-weight:700;}.drop p{font-size:12px;color:var(--muted);}
+#fi{display:none;}
+
+/* PROGRESS */
+.prog{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:none;flex-direction:column;gap:10px;}
+.prog.on{display:flex;}
+.pt{display:flex;justify-content:space-between;font-size:12px;}
+.pb{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.pf{height:100%;background:linear-gradient(90deg,var(--a1),var(--a2));border-radius:2px;transition:width .25s;width:0%;}
+
+/* FILTER */
+.frow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.fb{font-family:'Space Grotesk',sans-serif;font-size:12px;padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;font-weight:500;}
+.fb.on,.fb:hover{border-color:var(--a1);color:var(--a1);background:#4f8ef710;}
+.srch{background:var(--card);border:1.5px solid var(--border);border-radius:9px;padding:9px 14px;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border .15s;width:100%;}
+.srch:focus{border-color:var(--a1);}
+.srch::placeholder{color:var(--muted);}
+.selrow{display:flex;gap:10px;flex-wrap:wrap;}
+.selrow .field{flex:1;min-width:130px;}
+
+/* FILE GRID */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:12px;}
+.fc{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:10px;transition:all .2s;animation:up .3s ease both;}
+.fc:hover{border-color:var(--a1);transform:translateY(-2px);box-shadow:0 8px 28px #4f8ef710;}
+.fi{font-size:28px;width:48px;height:48px;border-radius:12px;background:var(--s1);display:flex;align-items:center;justify-content:center;}
+.fn{font-size:13px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all;}
+.fm{display:flex;flex-direction:column;gap:3px;}.fm span{font-size:11px;color:var(--muted);}
+.fa{display:flex;gap:8px;margin-top:auto;}.fa .btn{flex:1;font-size:12px;padding:8px 10px;}
+
+/* EMPTY / LOADING */
+.empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);}
+.empty .ei{font-size:48px;margin-bottom:14px;}.empty p{font-size:13px;line-height:1.7;}
+.ldg{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:60px;color:var(--muted);}
+.spin{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--a1);border-radius:50%;animation:spin .7s linear infinite;}
+
+.sh2{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.st{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.cnt{background:var(--s2);color:var(--muted);font-size:11px;padding:2px 8px;border-radius:20px;}
+
+/* ══ GEMINI CHAT ══ */
+.chat-fab{
+  position:fixed;bottom:28px;right:24px;z-index:150;
+  width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#4f8ef7,#a64ff7);
+  box-shadow:0 6px 24px #4f8ef740;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;transition:all .2s;
+}
+.chat-fab:hover{transform:scale(1.08);box-shadow:0 10px 32px #4f8ef760;}
+.chat-fab.on{background:linear-gradient(135deg,#f74f7a,#a64ff7);}
+
+.chat-panel{
+  position:fixed;inset:0;z-index:150;
+  width:100vw;max-width:100vw;
+  background:var(--card);border:none;
+  border-radius:0;box-shadow:none;
+  display:none;flex-direction:column;overflow:hidden;
+  animation:up .3s ease;height:100%;max-height:100%;
+}
+.chat-panel.on{display:flex;}
+
+/* ══ CLAUDE-STYLE CHAT HEADER ══ */
+.chat-header{
+  padding:0 8px;
+  height:52px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  background:var(--chat-panel-bg);
+  position:relative;
+  flex-shrink:0;
+}
+.chat-header-center{
+  position:absolute;left:0;right:0;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
+}
+.chat-header-title{
+  font-size:15px;font-weight:700;color:var(--text);
+  letter-spacing:-.3px;
+  pointer-events:auto;
+  cursor:pointer;
+  padding:4px 8px;border-radius:7px;
+  transition:background .15s;
+}
+.chat-header-title:hover{background:var(--s2);}
+.chat-header-left{display:flex;align-items:center;gap:4px;z-index:1;}
+.chat-header-right{margin-left:auto;z-index:1;}
+.chat-close{background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:6px 8px;line-height:1;border-radius:8px;transition:all .15s;}
+.chat-close:hover{color:var(--text);background:var(--s2);}
+.chat-avatar{display:none;}
+.chat-header-text{display:none;}
+
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-height:200px;}
+.chat-msgs::-webkit-scrollbar{width:4px;}
+.chat-msgs::-webkit-scrollbar-track{background:transparent;}
+.chat-msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.msg{display:flex;flex-direction:column;gap:4px;}
+.msg.user{align-self:flex-end;max-width:80%;}
+.msg.ai{align-self:flex-start;width:calc(100% - 16px);max-width:calc(100% - 16px);}
+.msg-bubble{padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.6;}
+.msg.user .msg-bubble{background:#d1d5db;color:#1a1c2e;border-bottom-right-radius:4px;}
+.msg.ai .msg-bubble{background:transparent;border:none;color:var(--text);padding:6px 4px;}
+.msg-time{font-size:10px;color:var(--muted);padding:0 4px;}
+.msg.user .msg-time{text-align:right;}
+
+.typing{display:flex;gap:4px;align-items:center;padding:10px 14px;background:var(--s2);border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:4px;width:fit-content;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite;}
+.dot:nth-child(2){animation-delay:.2s;}.dot:nth-child(3){animation-delay:.4s;}
+
+/* ══ CLAUDE-STYLE INPUT ROW ══ */
+.chat-input-row{
+  padding:10px 14px 14px;
+  border-top:1px solid var(--border);
+  display:none;
+  background:var(--chat-panel-bg);
+  flex-direction:column;
+  gap:0;
+}
+.chat-input-inner{
+  display:flex;align-items:flex-end;gap:8px;
+  background:var(--s1);
+  border:1.5px solid var(--border);
+  border-radius:14px;
+  padding:8px 10px 8px 6px;
+  transition:border-color .15s;
+}
+.chat-input-inner:focus-within{border-color:var(--a1);}
+.chat-plus-btn{
+  background:transparent;border:none;
+  color:var(--muted);cursor:pointer;
+  width:32px;height:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;line-height:1;
+  transition:all .15s;flex-shrink:0;
+  margin-bottom:1px;
+}
+.chat-plus-btn:hover{color:var(--text);background:var(--s2);}
+.chat-input{
+  flex:1;background:transparent;border:none;
+  padding:5px 4px;
+  font-family:'Space Grotesk',sans-serif;font-size:14px;
+  color:var(--text);outline:none;
+  resize:none;max-height:120px;min-height:24px;
+  line-height:1.5;
+}
+.chat-input::placeholder{color:var(--muted);}
+.chat-send{
+  background:var(--border);border:none;border-radius:9px;
+  width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;flex-shrink:0;transition:transform .15s,box-shadow .15s;
+  margin-bottom:1px;
+  position:relative;overflow:hidden;
+}
+.chat-send::before{
+  content:'';position:absolute;inset:0;border-radius:9px;
+  background:linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0077ff,#8800ff,#ff0000);
+  background-size:400% 400%;
+  animation:rgbCycle 3s linear infinite;
+  opacity:0;transition:opacity .25s;
+}
+.chat-send.ready::before{opacity:1;}
+.chat-send svg{width:16px;height:16px;fill:#fff;position:relative;z-index:1;}
+.chat-send:hover{transform:scale(1.08);}
+@keyframes rgbCycle{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+.chat-drive-btn{
+  background:transparent;border:none;
+  color:var(--muted);cursor:pointer;
+  width:32px;height:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;line-height:1;
+  transition:all .15s;flex-shrink:0;
+  margin-bottom:1px;
+}
+.chat-drive-btn:hover{color:var(--a1);background:var(--s2);}
+
+.gemini-setup{padding:16px;display:flex;flex-direction:column;gap:12px;}
+.gemini-setup p{font-size:12px;color:var(--muted);line-height:1.7;}
+.gemini-setup a{color:var(--a1);}
+
+/* ══ CHAT SESSIONS SIDEBAR ══ */
+.chat-body-wrap{display:flex;flex:1;overflow:hidden;position:relative;}
+.sessions-sidebar{width:240px;border-right:1px solid var(--border);background:var(--sidebar-bg,#09091200);display:flex;flex-direction:column;transition:all .25s;overflow:hidden;flex-shrink:0;}
+.sessions-sidebar.closed{width:0;border-right:none;}
+.sessions-top{padding:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.sessions-top span{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+.new-sess-btn{background:linear-gradient(135deg,var(--a1),#6a7fff);border:none;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;transition:all .15s;}
+.new-sess-btn:hover{transform:scale(1.04);}
+.sessions-list{flex:1;overflow-y:auto;padding:8px;}
+.sessions-list::-webkit-scrollbar{width:3px;}
+.sessions-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.sess-item{padding:9px 10px;border-radius:9px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px;margin-bottom:4px;user-select:none;}
+.sess-item:hover{background:var(--s1);}
+.sess-item.active{background:var(--s2);border:1px solid var(--border);}
+.sess-item-inner{flex:1;overflow:hidden;}
+
+/* Long-press context menu */
+.sess-ctx-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px #00000060;z-index:9999;min-width:170px;overflow:hidden;animation:fadeIn .12s ease;}
+.sess-ctx-item{display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:500;cursor:pointer;transition:background .12s;color:var(--text);}
+.sess-ctx-item:hover{background:var(--s2);}
+.sess-ctx-item.danger{color:#f74f7a;}
+.sess-ctx-item.danger:hover{background:#f74f7a18;}
+.sess-ctx-backdrop{position:fixed;inset:0;z-index:9998;}
+.sess-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sess-preview{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+.sess-del{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 5px;border-radius:4px;font-size:12px;opacity:0;transition:opacity .15s;}
+.sess-item:hover .sess-del{opacity:1;}
+.sess-del:hover{color:var(--a2);}
+
+/* ══ CHAT MAIN AREA ══ */
+.chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ══ SESSIONS TOGGLE BUTTON ══ */
+.sess-toggle{background:transparent;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px 6px;border-radius:6px;transition:all .15s;line-height:1;}
+.sess-toggle:hover{color:var(--text);background:var(--s2);}
+
+/* ══ CHAT TOOLBAR ══ */
+.chat-toolbar{padding:6px 12px;border-top:1px solid var(--border);background:var(--s1);display:flex;align-items:center;gap:6px;}
+.tool-btn{background:transparent;border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.tool-btn:hover{border-color:var(--a1);color:var(--a1);}
+.tool-btn.active{border-color:var(--a1);color:var(--a1);background:#4f8ef710;}
+
+/* ══ ATTACH PREVIEW BAR ══ */
+.attach-bar{padding:8px 12px;border-top:1px solid var(--border);background:#0a0b1499;display:none;flex-wrap:wrap;gap:6px;}
+.attach-bar.on{display:flex;}
+.attach-chip{background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 8px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;}
+.attach-chip button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:0 2px;}
+.attach-chip button:hover{color:var(--a2);}
+
+/* ══ AI CAPABILITIES NOTE ══ */
+.ai-caps{font-size:11px;color:var(--muted);padding:6px 14px;border-top:1px solid var(--border);background:#07080f80;text-align:center;line-height:1.5;}
+.ai-caps span{color:var(--a3);}
+
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:500;z-index:500;opacity:0;transition:all .3s;white-space:nowrap;max-width:88vw;box-shadow:0 8px 32px #00000040;}
+.toast.on{transform:translateX(-50%) translateY(0);opacity:1;}
+.toast.ok{border-color:#4ff7b030;color:var(--a3);}.toast.err{border-color:#f74f7a40;color:var(--a2);}
+
+@keyframes up{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+/* ══ LOGBOOK ══ */
+.lb-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+.lb-filters select,.lb-filters input{background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border .15s;flex:1;min-width:100px;}
+.lb-filters select:focus,.lb-filters input:focus{border-color:var(--a1);}
+.lb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:4px;}
+.lb-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;transition:all .2s;animation:up .3s ease both;}
+.lb-card:hover{border-color:var(--a1);transform:translateY(-2px);}
+.lb-img{width:100%;aspect-ratio:1;object-fit:cover;background:var(--s1);display:block;}
+.lb-info{padding:10px 12px;display:flex;flex-direction:column;gap:3px;}
+.lb-info .lbi-top{font-size:12px;font-weight:700;color:var(--text);}
+.lb-info .lbi-bot{font-size:11px;color:var(--muted);}
+.lb-add-form{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;}
+.lb-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+.lb-preview img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);}
+
+/* ══ ANNOUNCEMENTS ══ */
+.an-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:10px;animation:up .3s ease both;}
+.an-card.school-wide{border-color:#f7c44f44;background:linear-gradient(135deg,var(--card),#f7c44f08);}
+.an-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.an-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+.an-badge.all{background:#f7c44f20;color:var(--a4);border:1px solid #f7c44f40;}
+.an-badge.cls{background:#4f8ef720;color:var(--a1);border:1px solid #4f8ef740;}
+.an-title{font-size:15px;font-weight:700;line-height:1.3;}
+.an-body{font-size:13px;color:var(--muted);line-height:1.6;white-space:pre-wrap;}
+.an-meta{font-size:11px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;}
+.an-attachments{display:flex;flex-wrap:wrap;gap:8px;}
+.an-att{display:flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;text-decoration:none;color:var(--text);}
+.an-att:hover{border-color:var(--a1);color:var(--a1);}
+.an-form{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;}
+
+/* ══ TIMETABLE ══ */
+.tt-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);}
+.tt-table{width:100%;border-collapse:collapse;min-width:600px;}
+.tt-table th{background:var(--s2);padding:10px 8px;font-size:12px;font-weight:700;text-align:center;border:1px solid var(--border);color:var(--muted);white-space:nowrap;}
+.tt-table td{border:1px solid var(--border);padding:0;min-width:90px;}
+.tt-cell{width:100%;min-height:52px;background:transparent;border:none;padding:8px;font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--text);text-align:center;resize:none;outline:none;line-height:1.4;}
+.tt-cell:focus{background:var(--s1);}
+.tt-cell[readonly]{cursor:default;}
+.tt-period-col{background:var(--s2);font-size:12px;font-weight:700;text-align:center;padding:10px 6px;color:var(--a1);white-space:nowrap;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes blink{0%,100%{opacity:.3;}50%{opacity:1;}}
+
+/* ══ STARTUP SPLASH ══ */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:18px;
+  transition:opacity .55s ease, visibility .55s ease;
+}
+#splash.hidden{opacity:0;visibility:hidden;pointer-events:none;}
+.splash-text{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(28px,8vw,48px);
+  background:linear-gradient(135deg,var(--a1),var(--a2),var(--a3));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  letter-spacing:-1.5px;
+  opacity:0;
+  transform:translateX(-60px);
+  animation:splashSlide .75s cubic-bezier(.22,1,.36,1) .15s forwards;
+}
+.splash-sub{
+  font-size:13px;color:var(--muted);letter-spacing:.5px;
+  opacity:0;
+  animation:splashFade .5s ease .7s forwards;
+}
+.splash-bar{
+  width:120px;height:2px;border-radius:2px;
+  background:var(--border);
+  overflow:hidden;
+  opacity:0;
+  animation:splashFade .3s ease .5s forwards;
+}
+.splash-bar-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--a1),var(--a2));
+  border-radius:2px;
+  animation:splashLoad 1.2s ease .5s forwards;
+}
+@keyframes splashSlide{to{opacity:1;transform:translateX(0);}}
+@keyframes splashFade{to{opacity:1;}}
+@keyframes splashLoad{from{width:0%;}to{width:100%;}}
+
+@media(max-width:500px){
+  nav{padding:12px 14px;}.body{padding:16px 12px;}
+  .cgrid{grid-template-columns:repeat(2,1fr);}
+  .selrow{flex-direction:column;}.lcard{padding:24px 18px;}
+  .chat-fab{bottom:20px;right:16px;}
+}
+</style>
+</head>
+<body>
+<!-- ══ STARTUP SPLASH ══ -->
+<div id="splash">
+  <div class="splash-text">Xavier's Online</div>
+  <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+</div>
+
+<div class="gl gl1"></div><div class="gl gl2"></div>
+
+<!-- ══ LOGIN ══ -->
+<div id="s-login" class="scr on">
+  <div class="lw">
+    <div>
+      <div class="logo">XavierDrive</div>
+      <div class="logo-sub">St. Xavier's School, Gaushala Road, Muzaffarpur</div>
+    </div>
+    <div class="lcard">
+      <h2>Sign in to continue</h2>
+
+      <!-- Role toggle -->
+      <div class="rtabs">
+        <button class="rtab on" onclick="setRole('student',this)">📚 Student</button>
+        <button class="rtab" onclick="setRole('teacher',this)">🎓 Teacher</button>
+      </div>
+
+      <!-- Student pane -->
+      <div class="pane on" id="pane-s">
+        <p>Sign in with your school Google account to access class materials.</p>
+        <button class="gbtn" onclick="startAuth('student')">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G"/>
+          Continue with Google
+        </button>
+      </div>
+
+      <!-- Teacher pane: password -->
+      <div class="pane" id="pane-t">
+        <p>Enter the teacher password, then sign in with Google.</p>
+        <div class="field">
+          <label>Teacher Password</label>
+          <input type="password" id="tpass" placeholder="••••••••" onkeydown="if(event.key==='Enter')chkPass()"/>
+        </div>
+        <p class="errmsg" id="perr">Incorrect password.</p>
+        <button class="btn btn-p" onclick="chkPass()">Continue →</button>
+      </div>
+
+      <!-- Teacher pane: google -->
+      <div class="pane" id="pane-tg">
+        <p>✅ Password verified. Now sign in with Google.</p>
+        <button class="gbtn" onclick="startAuth('teacher')">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G"/>
+          Continue with Google
+        </button>
+        <button class="btn btn-o btn-sm" onclick="backPass()" style="margin-top:-4px">← Back</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CLASS SELECT ══ -->
+<div id="s-class" class="scr">
+  <div class="cbox">
+    <div class="logo" style="font-size:22px">XavierDrive</div>
+    <h2>Select Your Class</h2>
+    <p>You can change this anytime from the app</p>
+    <div class="cgrid" id="cgrid"></div>
+  </div>
+</div>
+
+<!-- CHANGE CLASS MODAL -->
+<div class="ov" id="ov-class">
+  <div class="modal">
+    <h3>📚 Change Class</h3>
+    <div class="cgrid" id="cgrid2" style="margin-top:4px"></div>
+    <button class="btn btn-o" onclick="closeOv('ov-class')">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="s-app" class="scr">
+  <nav>
+    <div class="nl">
+      <div class="nlogo">XavierDrive</div>
+      <span class="bdg" id="nbdg"></span>
+      <span class="clsbdg" id="clsdsp" style="display:none"></span>
+    </div>
+    <div class="nr" id="nr">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙 Dark</button>
+    </div>
+  </nav>
+  <div class="tabnav" id="tabnav"></div>
+  <div class="body" id="mbody"></div>
+</div>
+
+<!-- GEMINI FAB -->
+<button class="chat-fab" id="chat-fab" onclick="toggleChat()" style="display:none" title="Xavier Assistant">✨</button>
+
+<!-- GEMINI PANEL -->
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-header">
+    <div class="chat-header-left">
+      <button class="sess-toggle" onclick="toggleSidebar()" title="Chat history">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <button class="tool-btn btn-sm" style="font-size:11px;padding:4px 9px;" onclick="newSession()" title="New chat">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New
+      </button>
+    </div>
+    <div class="chat-header-center">
+      <span class="chat-header-title" id="chat-title" onclick="startRenameChat()" title="Click to rename">Xavier's AI</span>
+    </div>
+    <div class="chat-header-right">
+      <button class="chat-close" onclick="toggleChat()">✕</button>
+    </div>
+  </div>
+  <div class="chat-body-wrap">
+    <!-- Sessions Sidebar -->
+    <div class="sessions-sidebar closed" id="sessions-sidebar">
+      <div class="sessions-top">
+        <span>Chats</span>
+        <button class="new-sess-btn" onclick="newSession()">+ New</button>
+      </div>
+      <div class="sessions-list" id="sessions-list"></div>
+    </div>
+    <!-- Main Chat -->
+    <div class="chat-main">
+      <div id="chat-body" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div>
+      <!-- Attach bar -->
+      <div class="attach-bar" id="attach-bar"></div>
+      <!-- Input row — Claude style -->
+      <div class="chat-input-row" id="chat-input-row">
+        <div class="chat-input-inner">
+          <button class="chat-plus-btn" onclick="document.getElementById('chat-file-inp').click()" title="Attach file">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="chat-drive-btn" onclick="summarizeDrivePrompt()" title="Ask about Drive files">📁</button>
+          <textarea class="chat-input" id="cinput" rows="1" placeholder="Message Xavier's AI…" inputmode="text" autocomplete="off" autocorrect="off"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}"
+            oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';document.querySelector('.chat-send').classList.toggle('ready',this.value.trim().length>0);"></textarea>
+          <button class="chat-send" onclick="sendMsg()">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+        <input type="file" id="chat-file-inp" style="display:none" multiple accept=".pdf,.doc,.docx,.txt,.pptx,.xlsx,.png,.jpg,.jpeg,.gif,.webp" onchange="onChatFileAttach(event)"/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ CONSTANTS ════════════════════════════════════
+const WORKER='https://xavier-auth.drrohitkumar27.workers.dev';
+const FOLDER='Xavier-Drive';
+const CLASSES=['Class 1','Class 2','Class 3','Class 4','Class 5','Class 6','Class 7','Class 8','Class 9','Class 10','Class 11','Class 12'];
+const SECTIONS=['A','B','C','D','E','F'];
+const SUBJECTS=['Mathematics','Science','Physics','Chemistry','Biology','English','Hindi','Social Studies','History','Geography','Computer Science','Economics','Accountancy','Other'];
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const PERIODS=[1,2,3,4,5,6,7,8];
+
+// ══ STATE ════════════════════════════════════════
+let role=null,token=null,rootId=null,allFiles=[],sClass=null,curTab='files',curFilter='all',fClass='',fSubj='',fChap='';
+let chatOpen=false,chatHistory=[],geminiKey='';
+let sessions=[],curSession=null,sidebarOpen=false,attachedFiles=[];
+let driveIndex=[],driveIndexLoaded=false;
+let _clientId='',_teacherPass='';
+let subFolders={};
+const LB_KEY='xd_logbook',AN_KEY='xd_announcements',TT_KEY='xd_timetable';
+let logbookEntries=[],announcements=[],timetable={};
+
+// ══ STORAGE ══════════════════════════════════════
+const lc=()=>{try{return JSON.parse(localStorage.getItem('xd')||'{}');}catch{return{};}};
+const sc=o=>localStorage.setItem('xd',JSON.stringify({...lc(),...o}));
+
+// ══ INIT ═════════════════════════════════════════
+async function init(){
+  applyTheme();
+  buildGrids();
+
+  // Hide splash after animation (~1.8s) or after load, whichever is later
+  const hideSplash=()=>{
+    const sp=document.getElementById('splash');
+    if(sp)sp.classList.add('hidden');
+  };
+  setTimeout(hideSplash,1800);
+
+  // Load config (CLIENT_ID + GROQ_KEY) from worker
+  try{
+    const r=await fetch(WORKER+'/config',{credentials:'include'});
+    const cfg=await r.json();
+    if(cfg.clientId)_clientId=cfg.clientId;
+    if(cfg.groqKey)geminiKey=cfg.groqKey;
+  }catch(e){console.warn('Config fetch failed',e);}
+
+  // Check if returning from worker OAuth callback
+  const urlParams=new URLSearchParams(location.search);
+  if(urlParams.get('auth')==='done'||location.search.includes('auth=done')){
+    history.replaceState(null,'',location.pathname);
+    role=sessionStorage.getItem('pr')||lc().role||'student';
+    sessionStorage.removeItem('pr');
+    sc({role});
+    await afterLogin();
+    return;
+  }
+
+  // Check if already logged in via worker session cookie
+  try{
+    const r=await fetch(WORKER+'/me',{credentials:'include'});
+    if(r.ok){
+      const d=await r.json();
+      if(d.user){
+        // Get fresh Drive token
+        const tr=await fetch(WORKER+'/token',{credentials:'include'});
+        const td=await tr.json();
+        if(td.access_token){
+          token=td.access_token;
+          role=lc().role||'student';
+          const c=lc();
+          if(c.cls)sClass=c.cls;
+          if(role==='student'&&!sClass)show('s-class');
+          else enterApp();
+          return;
+        }
+      }
+    }
+  }catch{}
+
+  // Legacy token restore (fallback for 55min window)
+  const c=lc();
+  if(c.tok&&c.tt&&(Date.now()-c.tt<55*60*1000)&&c.role){
+    token=c.tok;role=c.role;
+    if(c.cls)sClass=c.cls;
+    if(role==='student'&&!sClass)show('s-class');
+    else enterApp();
+    return;
+  }
+
+  show('s-login');
+}
+
+function buildGrids(){
+  ['cgrid','cgrid2'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(el)el.innerHTML=CLASSES.map(c=>`<button class="cbtn" onclick="${i===0?'selClass':'chgClass'}('${c}')">${c}</button>`).join('');
+  });
+}
+
+// ══ SCREENS ══════════════════════════════════════
+const show=id=>{document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on');};
+const closeOv=id=>document.getElementById(id).classList.remove('on');
+
+// ══ LOGIN ════════════════════════════════════════
+function setRole(r,btn){
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  document.getElementById('pane-s').classList.toggle('on',r==='student');
+  document.getElementById('pane-t').classList.toggle('on',r==='teacher');
+  document.getElementById('pane-tg').classList.remove('on');
+  document.getElementById('perr').style.display='none';
+}
+
+function backPass(){
+  document.getElementById('pane-tg').classList.remove('on');
+  document.getElementById('pane-t').classList.add('on');
+  document.getElementById('tpass').value='';
+}
+
+// ══ AUTH ═════════════════════════════════════════
+function startAuth(r){
+  // Save role so callback knows
+  sessionStorage.setItem('pr',r);
+  sc({role:r});
+  // Use worker login (handles refresh tokens)
+  location.href=WORKER+'/login';
+}
+
+async function chkPass(){
+  const val=document.getElementById('tpass').value;
+  try{
+    const r=await fetch(WORKER+'/verify-teacher',{
+      method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pass:val})
+    });
+    const d=await r.json();
+    if(d.ok){
+      document.getElementById('pane-t').classList.remove('on');
+      document.getElementById('pane-tg').classList.add('on');
+      document.getElementById('perr').style.display='none';
+    }else{
+      document.getElementById('perr').style.display='block';
+      document.getElementById('tpass').value='';
+    }
+  }catch{
+    // Fallback if worker unreachable
+    document.getElementById('perr').style.display='block';
+    document.getElementById('tpass').value='';
+  }
+}
+
+async function afterLogin(){
+  // Get fresh token from worker
+  try{
+    const tr=await fetch(WORKER+'/token',{credentials:'include'});
+    const td=await tr.json();
+    if(td.access_token)token=td.access_token;
+  }catch{}
+
+  try{
+    const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${token}`}});
+    const u=await r.json();sc({uname:u.name,upic:u.picture,uemail:u.email});
+  }catch{}
+
+  if(role==='teacher'){await ensureRoot();enterApp();}
+  else{if(lc().cls){sClass=lc().cls;enterApp();}else show('s-class');}
+}
+
+function signOut(){
+  fetch(WORKER+'/logout',{credentials:'include'}).catch(()=>{});
+  token=null;role=null;sClass=null;
+  sc({tok:null,tt:null,role:null,cls:null});
+  document.getElementById('chat-fab').style.display='none';
+  document.getElementById('chat-panel').classList.remove('on');
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pane-s').classList.add('on');
+  document.querySelectorAll('.rtab').forEach((b,i)=>b.classList.toggle('on',i===0));
+  document.getElementById('tpass').value='';
+  show('s-login');
+}
+
+// ══ CLASS ════════════════════════════════════════
+function selClass(c){sClass=c;sc({cls:c});enterApp();}
+function chgClass(c){
+  sClass=c;sc({cls:c});closeOv('ov-class');
+  document.getElementById('clsdsp').textContent=c;
+  fClass=c;if(curTab==='files')renderStudentFiles();
+}
+function openChgClass(){
+  document.querySelectorAll('#cgrid2 .cbtn').forEach(b=>b.classList.toggle('on',b.textContent===sClass));
+  document.getElementById('ov-class').classList.add('on');
+}
+
+// ══ ENTER APP ════════════════════════════════════
+function enterApp(){
+  show('s-app');
+  const bdg=document.getElementById('nbdg');
+  bdg.textContent=role==='teacher'?'🎓 Teacher':'📚 Student';
+  bdg.className='bdg '+(role==='teacher'?'t':'s');
+  if(role==='student'){const cd=document.getElementById('clsdsp');cd.textContent=sClass||'';cd.style.display='';}
+  else document.getElementById('clsdsp').style.display='none';
+  const c=lc();if(!rootId&&c.rid)rootId=c.rid;
+  buildNav();buildTabs();
+  document.getElementById('chat-fab').style.display='';
+  fetchDriveIndex(); loadLogbook(); loadAnnouncements(); loadTimetable(); // pre-load all data
+  initChat();
+  switchTab('files');
+}
+
+function buildNav(){
+  const c=lc();
+  const pic=c.upic?`<img src="${esc(c.upic)}" alt=""/>`:'';
+  const nr=document.getElementById('nr');
+  // Keep theme btn, insert user info before it
+  const themeBtn=document.getElementById('theme-btn');
+  const userHtml=`
+    <div class="upill">${pic}<span>${esc(c.uname||'User')}</span></div>
+    ${role==='student'?`<button class="btn btn-o btn-sm" onclick="openChgClass()">Change Class</button>`:''}
+    <button class="btn btn-o btn-sm" onclick="signOut()">Sign out</button>
+  `;
+  nr.innerHTML=userHtml;
+  if(themeBtn)nr.appendChild(themeBtn);
+  else{const tb=document.createElement('button');tb.id='theme-btn';tb.className='theme-btn';tb.onclick=toggleTheme;tb.title='Toggle light/dark mode';nr.appendChild(tb);}
+  updateThemeBtn();
+}
+
+function buildTabs(){
+  const common=`<button class="tn" data-tab="files" onclick="switchTab('files')">📁 Files</button><button class="tn" data-tab="logbook" onclick="switchTab('logbook')">📓 Logbook</button><button class="tn" data-tab="announcements" onclick="switchTab('announcements')">📢 Notices</button><button class="tn" data-tab="timetable" onclick="switchTab('timetable')">🗓 Timetable</button>`;
+  const teacherExtra=`<button class="tn" data-tab="upload" onclick="switchTab('upload')">📤 Upload</button>`;
+  document.getElementById('tabnav').innerHTML=common+(role==='teacher'?teacherExtra:'');
+}
+
+function switchTab(tab){
+  curTab=tab;curFilter='all';fSubj='';fChap='';
+  document.querySelectorAll('.tn').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  document.getElementById('mbody').innerHTML='';
+  if(tab==='files')role==='teacher'?renderTeacherFiles():renderStudentFiles();
+  else if(tab==='upload')renderUpload();
+  else if(tab==='logbook')renderLogbook();
+  else if(tab==='announcements')renderAnnouncements();
+  else if(tab==='timetable')renderTimetable();
+}
+
+// ══ DRIVE ════════════════════════════════════════
+// All Drive operations go through the worker (owner token) — users never grant Drive perms.
+async function wDrv(workerPath,method='GET',body=null,qs=''){
+  const url=WORKER+workerPath+(qs?'?'+qs:'');
+  const o={method,credentials:'include'};
+  if(body){o.headers={'Content-Type':'application/json'};o.body=JSON.stringify(body);}
+  const r=await fetch(url,o);
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||r.statusText);}
+  if(r.status===204)return{};return r.json();
+}
+// Legacy stub — only used for DELETE path now
+async function drv(url,method='GET',body=null){
+  if(method==='DELETE'){
+    const id=url.split('/files/')[1]?.split('?')[0];
+    return wDrv('/drive/delete','DELETE',null,'id='+encodeURIComponent(id));
+  }
+  console.warn('drv() stub called unexpectedly:',url);return{};
+}
+
+async function ensureRoot(){
+  if(rootId)return rootId;
+  const c=lc();if(c.rid){rootId=c.rid;return rootId;}
+  try{
+    const q=`mimeType='application/vnd.google-apps.folder' and name='${FOLDER}' and trashed=false`;
+    const r=await wDrv('/drive/files','GET',null,'q='+encodeURIComponent(q)+'&fields=files(id)');
+    if(r.files?.length)rootId=r.files[0].id;
+    else{
+      const cr=await wDrv('/drive/mkdir','POST',{name:FOLDER,parents:[]});
+      rootId=cr.id;toast('📁 Drive folder created','ok');
+    }
+    sc({rid:rootId});
+  }catch(e){toast('Folder error: '+e.message,'err');}
+  return rootId;
+}
+
+// Get or create a subfolder inside a parent folder
+async function ensureFolder(name, parentId){
+  const key='sf_'+name.replace(/\s+/g,'_');
+  const cached=lc()[key];if(cached)return cached;
+  try{
+    const q=`mimeType='application/vnd.google-apps.folder' and name='${name}' and '${parentId}' in parents and trashed=false`;
+    const r=await wDrv('/drive/files','GET',null,'q='+encodeURIComponent(q)+'&fields=files(id)');
+    let fid;
+    if(r.files?.length)fid=r.files[0].id;
+    else{const cr=await wDrv('/drive/mkdir','POST',{name,parents:[parentId]});fid=cr.id;}
+    sc({[key]:fid});
+    return fid;
+  }catch(e){console.warn('ensureFolder failed:',name,e);return parentId;}
+}
+
+// Get class subfolder (creates hierarchy: Xavier-Drive/Class X/[PDFs,Images,Docs])
+async function getClassFolder(cls, type){
+  await ensureRoot();
+  const clsFid=await ensureFolder(cls, rootId);
+  if(!type)return clsFid;
+  const typeMap={pdf:'PDFs',image:'Images',doc:'Documents',video:'Videos',other:'Other'};
+  const folderName=typeMap[type]||'Other';
+  return await ensureFolder(folderName, clsFid);
+}
+
+// Get logbook folder
+async function getLogbookFolder(){
+  await ensureRoot();
+  return await ensureFolder('Logbook', rootId);
+}
+
+// Get announcements folder
+async function getAnnouncementsFolder(){
+  await ensureRoot();
+  return await ensureFolder('Announcements', rootId);
+}
+
+async function mkPub(id){
+  try{await wDrv('/drive/mkpub','POST',{id});}catch{}
+}
+
+const gp=(f,k)=>{if(!f.description)return'';try{return JSON.parse(f.description)[k]||'';}catch{return'';}};
+
+// ══ TEACHER FILES ════════════════════════════════
+function renderTeacherFiles(){
+  document.getElementById('mbody').innerHTML=`
+    <div class="ph"><div><h2>All Files</h2><p>All uploaded class materials</p></div><button class="btn btn-o btn-sm" onclick="loadTFiles()">↻ Refresh</button></div>
+    <div class="selrow">
+      <div class="field"><label>Class</label><select onchange="fClass=this.value;applyTF()"><option value="">All Classes</option>${CLASSES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="field"><label>Subject</label><select onchange="fSubj=this.value;applyTF()"><option value="">All Subjects</option>${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+    </div>
+    <input class="srch" type="text" placeholder="Search by name, subject or chapter..." oninput="applyTF()"/>
+    <div class="frow">
+      <button class="fb on" onclick="setFT('all',this)">All</button>
+      <button class="fb" onclick="setFT('pdf',this)">PDF</button>
+      <button class="fb" onclick="setFT('doc',this)">Docs</button>
+      <button class="fb" onclick="setFT('image',this)">Images</button>
+      <button class="fb" onclick="setFT('video',this)">Video</button>
+    </div>
+    <div class="sh2"><div class="st">Files <span class="cnt" id="tcnt">0</span></div></div>
+    <div class="grid" id="tgrid"><div class="ldg"><div class="spin"></div><span>Loading...</span></div></div>
+  `;
+  loadTFiles();
+}
+
+async function loadTFiles(){
+  if(!rootId)await ensureRoot();
+  const g=document.getElementById('tgrid');if(!g)return;
+  g.innerHTML='<div class="ldg"><div class="spin"></div><span>Loading...</span></div>';
+  try{
+    const q=`'${rootId}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`;
+    const r=await wDrv('/drive/files','GET',null,'q='+encodeURIComponent(q)+'&fields=files(id,name,mimeType,size,modifiedTime,description)&orderBy=modifiedTime+desc&pageSize=500');
+    allFiles=r.files||[];applyTF();
+  }catch(e){if(g)g.innerHTML=`<div class="empty"><div class="ei">❌</div><p>${esc(e.message)}</p></div>`;}
+}
+
+function applyTF(){
+  const q=document.querySelector('.srch')?.value||'';
+  let fs=allFiles;
+  if(fClass)fs=fs.filter(f=>gp(f,'cls')===fClass);
+  if(fSubj)fs=fs.filter(f=>gp(f,'sub')===fSubj);
+  if(q)fs=fs.filter(f=>f.name.toLowerCase().includes(q.toLowerCase())||gp(f,'sub').toLowerCase().includes(q.toLowerCase())||gp(f,'chp').toLowerCase().includes(q.toLowerCase()));
+  if(curFilter!=='all')fs=fs.filter(f=>mType(f,curFilter));
+  const c=document.getElementById('tcnt');if(c)c.textContent=fs.length;
+  renderGrid(fs,'tgrid',true);
+}
+function setFT(t,btn){curFilter=t;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');applyTF();}
+
+// ══ STUDENT FILES ════════════════════════════════
+function renderStudentFiles(){
+  document.getElementById('mbody').innerHTML=`
+    <div class="ph"><div><h2>Class Materials</h2><p>${esc(sClass||'All Classes')}</p></div><button class="btn btn-o btn-sm" onclick="loadSFiles()">↻ Refresh</button></div>
+    <div class="selrow">
+      <div class="field"><label>Subject</label><select onchange="fSubj=this.value;applySTF()"><option value="">All Subjects</option>${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      <div class="field"><label>Chapter</label><input type="text" class="field input" placeholder="Search chapter..." style="background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:14px;outline:none;width:100%;" oninput="fChap=this.value;applySTF()"/></div>
+    </div>
+    <input class="srch" type="text" placeholder="Search files..." oninput="applySTF()"/>
+    <div class="frow">
+      <button class="fb on" onclick="setSTF('all',this)">All</button>
+      <button class="fb" onclick="setSTF('pdf',this)">PDF</button>
+      <button class="fb" onclick="setSTF('doc',this)">Docs</button>
+      <button class="fb" onclick="setSTF('image',this)">Images</button>
+      <button class="fb" onclick="setSTF('video',this)">Video</button>
+    </div>
+    <div class="sh2"><div class="st">Files <span class="cnt" id="scnt">0</span></div></div>
+    <div class="grid" id="sgrid"><div class="ldg"><div class="spin"></div><span>Loading...</span></div></div>
+  `;
+  loadSFiles();
+}
+
+async function loadSFiles(){
+  const c=lc();const fid=c.rid;
+  const g=document.getElementById('sgrid');
+  if(!fid){if(g)g.innerHTML='<div class="empty"><div class="ei">⏳</div><p>No files yet.<br/>Ask your teacher to upload files first.</p></div>';return;}
+  if(g)g.innerHTML='<div class="ldg"><div class="spin"></div><span>Loading...</span></div>';
+  try{
+    const q=`'${fid}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`;
+    const r=await wDrv('/drive/files','GET',null,'q='+encodeURIComponent(q)+'&fields=files(id,name,mimeType,size,modifiedTime,description)&orderBy=modifiedTime+desc&pageSize=500');
+    allFiles=r.files||[];applySTF();
+  }catch(e){if(g)g.innerHTML=`<div class="empty"><div class="ei">❌</div><p>${esc(e.message)}</p></div>`;}
+}
+
+function applySTF(){
+  const q=document.querySelector('.srch')?.value||'';
+  let fs=allFiles;
+  if(sClass)fs=fs.filter(f=>{const cl=gp(f,'cls');return!cl||cl===sClass;});
+  if(fSubj)fs=fs.filter(f=>gp(f,'sub')===fSubj);
+  if(fChap)fs=fs.filter(f=>gp(f,'chp').toLowerCase().includes(fChap.toLowerCase()));
+  if(q)fs=fs.filter(f=>f.name.toLowerCase().includes(q.toLowerCase())||gp(f,'sub').toLowerCase().includes(q.toLowerCase())||gp(f,'chp').toLowerCase().includes(q.toLowerCase()));
+  if(curFilter!=='all')fs=fs.filter(f=>mType(f,curFilter));
+  const c=document.getElementById('scnt');if(c)c.textContent=fs.length;
+  renderGrid(fs,'sgrid',false);
+}
+function setSTF(t,btn){curFilter=t;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');applySTF();}
+
+// ══ GRID ═════════════════════════════════════════
+function mType(f,t){
+  const m=f.mimeType||'',n=f.name.toLowerCase();
+  if(t==='pdf')return m.includes('pdf')||n.endsWith('.pdf');
+  if(t==='doc')return m.includes('word')||m.includes('document')||/\.(docx?|pptx?|txt)$/.test(n);
+  if(t==='image')return m.startsWith('image/');
+  if(t==='video')return m.startsWith('video/');
+  return true;
+}
+
+function renderGrid(files,id,isT){
+  const g=document.getElementById(id);if(!g)return;
+  if(!files.length){g.innerHTML='<div class="empty"><div class="ei">📭</div><p>No files found.</p></div>';return;}
+  g.innerHTML=files.map((f,i)=>{
+    const cl=gp(f,'cls'),sub=gp(f,'sub'),chp=gp(f,'chp');
+    return `<div class="fc" style="animation-delay:${i*.04}s">
+      <div class="fi">${ico(f.mimeType,f.name)}</div>
+      <div class="fn" title="${esc(f.name)}">${esc(f.name)}</div>
+      <div class="fm">
+        ${cl?`<span>📚 ${esc(cl)}</span>`:''}
+        ${sub?`<span>📖 ${esc(sub)}</span>`:''}
+        ${chp?`<span>📑 ${esc(chp)}</span>`:''}
+        <span>${sz(f.size)} · ${dt(f.modifiedTime)}</span>
+      </div>
+      <div class="fa">
+        <button class="btn btn-dl" onclick="dlFile('${f.id}','${esc2(f.name)}')">⬇ Download</button>
+        ${isT?`<button class="btn btn-d" onclick="delFile('${f.id}','${esc2(f.name)}')">🗑</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══ UPLOAD ═══════════════════════════════════════
+function renderUpload(){
+  document.getElementById('mbody').innerHTML=`
+    <div class="ph"><div><h2>Upload Files</h2><p>Tag files by class, subject and chapter</p></div></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px;display:flex;flex-direction:column;gap:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px">📂 File Details</div>
+      <div class="selrow">
+        <div class="field"><label>Class *</label><select id="ucls"><option value="">Select class...</option>${CLASSES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div class="field"><label>Subject</label><select id="usub"><option value="">Select subject...</option>${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      </div>
+      <div class="field"><label>Chapter / Topic (optional)</label><input type="text" id="uchp" placeholder="e.g. Chapter 3 - Photosynthesis"/></div>
+    </div>
+    <div class="drop" id="dz" onclick="document.getElementById('fi').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="onDrop(event)">
+      <div class="di">☁️</div><h3>Drop files here or tap to browse</h3><p>PDF, DOCX, PPTX, images, videos — anything</p>
+    </div>
+    <input type="file" id="fi" multiple onchange="onSel(event)"/>
+    <div class="prog" id="prog"><div class="pt"><span id="pn">Uploading...</span><span id="pp">0%</span></div><div class="pb"><div class="pf" id="pb"></div></div></div>
+  `;
+  ensureRoot();
+}
+
+function onDrop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag');upAll([...e.dataTransfer.files]);}
+function onSel(e){upAll([...e.target.files]);e.target.value='';}
+
+async function upAll(files){
+  const cls=document.getElementById('ucls')?.value||'';
+  if(!cls){toast('Please select a class first','err');return;}
+  const sub=document.getElementById('usub')?.value||'';
+  const chp=document.getElementById('uchp')?.value?.trim()||'';
+  for(const f of files){
+    // Determine file type for subfolder routing
+    let ftype='other';
+    if(f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf'))ftype='pdf';
+    else if(f.type.startsWith('image/'))ftype='image';
+    else if(f.type.startsWith('video/'))ftype='video';
+    else if(/\.(docx?|pptx?|xlsx?|txt|csv)$/i.test(f.name))ftype='doc';
+    const folderId=await getClassFolder(cls,ftype);
+    await upOne(f,cls,sub,chp,folderId);
+  }
+}
+
+function upOne(file,cls,sub,chp,folderId){
+  return new Promise(res=>{
+    const prog=document.getElementById('prog'),bar=document.getElementById('pb'),pct=document.getElementById('pp'),fn=document.getElementById('pn');
+    if(prog)prog.classList.add('on');if(fn)fn.textContent=file.name;if(bar)bar.style.width='0%';if(pct)pct.textContent='0%';
+    const targetParent=folderId||rootId;
+    const meta={name:file.name,parents:[targetParent],description:JSON.stringify({cls,sub,chp})};
+    const form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+    form.append('file',file);
+    // Upload via worker (owner Drive token — teacher's own account never asked for Drive perms)
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST',WORKER+'/drive/upload');
+    xhr.withCredentials=true; // send session cookie
+    xhr.upload.onprogress=e=>{if(e.lengthComputable){const p=Math.round(e.loaded/e.total*100);if(bar)bar.style.width=p+'%';if(pct)pct.textContent=p+'%';}};
+    xhr.onload=()=>{
+      if(prog)prog.classList.remove('on');
+      if(xhr.status===200){toast(`✅ Uploaded: ${file.name}`,'ok');driveIndexLoaded=false;}
+      else toast(`❌ Failed: ${file.name}`,'err');res();
+    };
+    xhr.onerror=()=>{if(prog)prog.classList.remove('on');toast('Upload error','err');res();};
+    xhr.send(form);
+  });
+}
+
+async function dlFile(id,name){
+  toast(`⬇ ${name}`);
+  try{
+    // Worker proxies the download using the owner token — no user Drive perms needed
+    const r=await fetch(`${WORKER}/drive/media?id=${encodeURIComponent(id)}`,{credentials:'include'});
+    if(!r.ok)throw new Error();
+    const blob=await r.blob();const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href);
+    toast(`✅ Downloaded: ${name}`,'ok');
+  }catch{
+    // Fallback: files are public so direct Drive link works without login
+    window.open(`https://drive.google.com/uc?export=download&id=${id}`,'_blank');
+  }
+}
+
+async function delFile(id,name){
+  if(!confirm(`Delete "${name}"?`))return;
+  try{await wDrv('/drive/delete','DELETE',null,'id='+encodeURIComponent(id));toast('🗑 Deleted','ok');loadTFiles();}
+  catch{toast('Delete failed','err');}
+}
+
+// ══ DRIVE AI HELPERS ════════════════════════════
+// Fetch and cache the full Drive file listing (once per session / after upload)
+async function fetchDriveIndex(){
+  if(driveIndexLoaded)return;
+  try{
+    const c=lc();const fid=c.rid||rootId;
+    if(!fid)return;
+    const q=`'${fid}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`;
+    const d=await wDrv('/drive/files','GET',null,'q='+encodeURIComponent(q)+'&fields=files(id,name,mimeType,size,modifiedTime,description)&orderBy=modifiedTime+desc&pageSize=500');
+    if(!d.error){driveIndex=d.files||[];driveIndexLoaded=true;}
+  }catch{}
+}
+
+// Extract text from a Drive file — handles PDFs via PDF.js, Google Docs via export, plain text directly
+async function fetchDriveFileContent(file){
+  try{
+    const isPDF=file.mimeType==='application/pdf'||file.name.toLowerCase().endsWith('.pdf');
+
+    // ── Google Workspace files → files are public; export directly ──
+    if(file.mimeType&&file.mimeType.includes('google-apps')){
+      let exportMime='text/plain';
+      if(file.mimeType.includes('spreadsheet'))exportMime='text/csv';
+      const r=await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=${encodeURIComponent(exportMime)}`);
+      if(!r.ok)return null;
+      return (await r.text()).substring(0,12000);
+    }
+
+    // ── All other files — proxy through worker (owner token) ──
+    const mediaUrl=`${WORKER}/drive/media?id=${encodeURIComponent(file.id)}`;
+    if(isPDF){
+      const r=await fetch(mediaUrl,{credentials:'include'});
+      if(!r.ok)return null;
+      const arrayBuffer=await r.arrayBuffer();
+      return await extractPDFText(arrayBuffer);
+    }
+    const isText=/\.(txt|md|csv|json|xml|html|htm|js|py|java|cpp|c|cs|ts|css)$/i.test(file.name)||
+                 (file.mimeType&&(file.mimeType.startsWith('text/')||file.mimeType.includes('json')));
+    if(isText){
+      const r=await fetch(mediaUrl,{credentials:'include'});
+      if(!r.ok)return null;
+      return (await r.text()).substring(0,12000);
+    }
+    const r=await fetch(mediaUrl,{credentials:'include'});
+    if(!r.ok)return null;
+    const text=await r.text();
+    const runs=text.match(/[\x20-\x7E]{4,}/g)||[];
+    return runs.join(' ').replace(/\s+/g,' ').trim().substring(0,10000)||null;
+  }catch{return null;}
+}
+
+// Use PDF.js to extract text from an ArrayBuffer of a PDF
+async function extractPDFText(arrayBuffer){
+  try{
+    // Set workerSrc if not already set
+    if(typeof pdfjsLib==='undefined')return null;
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+    const maxPages=Math.min(pdf.numPages,20); // cap at 20 pages to stay within token limits
+    let fullText='';
+    for(let i=1;i<=maxPages;i++){
+      const page=await pdf.getPage(i);
+      const content=await page.getTextContent();
+      const pageText=content.items.map(item=>item.str).join(' ');
+      fullText+=`\n[Page ${i}]\n${pageText}`;
+      if(fullText.length>12000)break;
+    }
+    return fullText.trim().substring(0,12000)||null;
+  }catch(e){return null;}
+}
+
+// Score Drive files against a user query and return the top matches
+function findRelevantFiles(query){
+  if(!driveIndex.length)return[];
+  const q=query.toLowerCase();
+  const scored=driveIndex.map(f=>{
+    let score=0;
+    const name=f.name.toLowerCase();
+    let meta='';try{const m=JSON.parse(f.description||'{}');meta=(m.sub+' '+m.chp+' '+m.cls).toLowerCase();}catch{}
+    // Class filter for students
+    if(sClass&&f.description){try{const m=JSON.parse(f.description);if(m.cls&&m.cls!==sClass)score-=5;}catch{}}
+    // Word matches
+    q.split(/\s+/).forEach(word=>{
+      if(word.length<3)return;
+      if(name.includes(word))score+=3;
+      if(meta.includes(word))score+=2;
+    });
+    // Boost PDFs slightly since they're the most common study material
+    if(f.mimeType==='application/pdf'||f.name.toLowerCase().endsWith('.pdf'))score+=0.5;
+    return{f,score};
+  }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+  return scored.slice(0,3).map(x=>x.f);
+}
+
+// Detect if user is asking to summarize / explain a Drive file
+function isSummarizeIntent(text){
+  return/(summarize|summary|explain|what('s| is) in|tell me about|describe|overview|notes on|content of|read|go through|what does.*say|key points)/i.test(text);
+}
+
+// ══ GEMINI CHAT ══════════════════════════════════
+function initChat(){
+  const c=lc();geminiKey=c.gkey||geminiKey;
+  loadSessions();
+  renderChatBody();
+}
+
+// ── Session Management ──
+function loadSessions(){
+  try{sessions=JSON.parse(localStorage.getItem('xd_sessions')||'[]');}catch{sessions=[];}
+  if(!sessions.length)newSession(true);
+  else{curSession=sessions[0];renderSessionsList();}
+}
+
+function saveSessions(){localStorage.setItem('xd_sessions',JSON.stringify(sessions));}
+
+function newSession(silent){
+  const id='s'+Date.now();
+  const sess={id,name:'New Chat',history:[],created:Date.now()};
+  sessions.unshift(sess);curSession=sess;chatHistory=[];
+  saveSessions();renderSessionsList();
+  if(!silent)renderChatBody();
+}
+
+function switchSession(id){
+  curSession=sessions.find(s=>s.id===id)||sessions[0];
+  chatHistory=curSession.history||[];
+  renderSessionsList();renderChatBody();
+}
+
+function deleteSession(id,e){
+  e.stopPropagation();
+  sessions=sessions.filter(s=>s.id!==id);
+  if(curSession?.id===id){if(sessions.length)curSession=sessions[0];else{newSession(true);return;}}
+  chatHistory=curSession?.history||[];
+  saveSessions();renderSessionsList();renderChatBody();
+}
+
+function renameSession(text){
+  if(!curSession)return;
+  curSession.name=text.trim().substring(0,40)||'New Chat';
+  const titleEl=document.getElementById('chat-title');
+  if(titleEl)titleEl.textContent=curSession.name;
+  saveSessions();renderSessionsList();
+}
+
+function renderSessionsList(){
+  const el=document.getElementById('sessions-list');if(!el)return;
+  el.innerHTML=sessions.map(s=>`
+    <div class="sess-item ${s.id===curSession?.id?'active':''}"
+      onclick="switchSession('${s.id}')"
+      oncontextmenu="showSessMenu(event,'${s.id}')"
+      data-id="${s.id}">
+      <div class="sess-item-inner">
+        <div class="sess-name">${esc(s.name)}</div>
+        <div class="sess-preview">${esc((s.history?.[s.history.length-1]?.text||'No messages yet').substring(0,38))}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Long-press support for touch
+  el.querySelectorAll('.sess-item').forEach(item=>{
+    let pressTimer;
+    item.addEventListener('touchstart',e=>{
+      pressTimer=setTimeout(()=>{
+        e.preventDefault();
+        const touch=e.touches[0];
+        showSessMenu({clientX:touch.clientX,clientY:touch.clientY,preventDefault:()=>{}},item.dataset.id);
+      },500);
+    },{passive:true});
+    item.addEventListener('touchend',()=>clearTimeout(pressTimer));
+    item.addEventListener('touchmove',()=>clearTimeout(pressTimer));
+  });
+}
+
+// ── Session context menu ──
+let _sessMenuId=null;
+function showSessMenu(e,id){
+  e.preventDefault&&e.preventDefault();
+  dismissSessMenu();
+  _sessMenuId=id;
+
+  const backdrop=document.createElement('div');
+  backdrop.className='sess-ctx-backdrop';
+  backdrop.id='sess-ctx-backdrop';
+  backdrop.onclick=dismissSessMenu;
+  document.body.appendChild(backdrop);
+
+  const menu=document.createElement('div');
+  menu.className='sess-ctx-menu';
+  menu.id='sess-ctx-menu';
+  menu.innerHTML=`
+    <div class="sess-ctx-item" onclick="sessCtxRename('${id}')">✏️ Rename chat</div>
+    <div class="sess-ctx-item" onclick="sessCtxDownload('${id}')">⬇️ Download chat</div>
+    <div class="sess-ctx-item" onclick="sessCtxSummarize('${id}')">✨ Summarize chat</div>
+    <div class="sess-ctx-item danger" onclick="sessCtxDelete('${id}')">🗑️ Delete chat</div>
+  `;
+  document.body.appendChild(menu);
+
+  // Position near tap/click
+  const mw=180,mh=170;
+  let x=e.clientX,y=e.clientY;
+  if(x+mw>window.innerWidth)x=window.innerWidth-mw-8;
+  if(y+mh>window.innerHeight)y=window.innerHeight-mh-8;
+  menu.style.left=x+'px';menu.style.top=y+'px';
+}
+function dismissSessMenu(){
+  document.getElementById('sess-ctx-menu')?.remove();
+  document.getElementById('sess-ctx-backdrop')?.remove();
+  _sessMenuId=null;
+}
+function sessCtxRename(id){
+  dismissSessMenu();
+  switchSession(id);
+  setTimeout(startRenameChat,80);
+}
+function sessCtxDelete(id){
+  dismissSessMenu();
+  const e={stopPropagation:()=>{}};
+  deleteSession(id,e);
+}
+function sessCtxDownload(id){
+  dismissSessMenu();
+  const s=sessions.find(x=>x.id===id);if(!s)return;
+  const lines=s.history.map(m=>`[${m.role==='user'?'You':'Xavier AI'}] ${m.text}`).join('\n\n');
+  const blob=new Blob([`Chat: ${s.name}\n${'─'.repeat(40)}\n\n${lines}`],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`${s.name.replace(/[^a-z0-9]/gi,'_')}.txt`;a.click();
+}
+function sessCtxSummarize(id){
+  dismissSessMenu();
+  const s=sessions.find(x=>x.id===id);if(!s)return;
+  switchSession(id);
+  // Build a summary prompt from the history
+  const lines=s.history.filter(m=>m.role!=='system').map(m=>(m.role==='user'?'User: ':'AI: ')+m.text.substring(0,300)).join('\n');
+  setTimeout(()=>{
+    const inp=document.getElementById('cinput');
+    if(inp){inp.value='Please summarize this entire conversation in a few bullet points.';sendMsg();}
+  },150);
+}
+
+function toggleSidebar(){
+  sidebarOpen=!sidebarOpen;
+  document.getElementById('sessions-sidebar').classList.toggle('closed',!sidebarOpen);
+}
+
+// ── Theme ──
+function toggleTheme(){
+  const isLight=document.body.classList.toggle('light');
+  sc({theme:isLight?'light':'dark'});
+  updateThemeBtn();
+}
+function updateThemeBtn(){
+  const btn=document.getElementById('theme-btn');
+  if(!btn)return;
+  const isLight=document.body.classList.contains('light');
+  btn.textContent=isLight?'🌙 Dark':'☀️ Light';
+}
+function applyTheme(){
+  const c=lc();
+  if(c.theme==='light')document.body.classList.add('light');
+  else document.body.classList.remove('light');
+  updateThemeBtn();
+}
+
+// ── Chat Title Rename ──
+function startRenameChat(){
+  if(!curSession)return;
+  const el=document.getElementById('chat-title');
+  if(!el)return;
+  const inp=document.createElement('input');
+  inp.value=curSession.name;
+  inp.style.cssText='font-size:14px;font-weight:700;background:var(--s2);border:1.5px solid var(--a1);border-radius:6px;padding:2px 7px;color:var(--text);font-family:Space Grotesk,sans-serif;outline:none;width:180px;max-width:calc(100% - 10px);text-align:center;';
+  el.replaceWith(inp);
+  inp.focus();inp.select();
+  const commit=()=>{
+    const val=inp.value.trim()||"New Chat";
+    const newEl=document.createElement('span');
+    newEl.id='chat-title';newEl.className='chat-header-title';
+    newEl.onclick=startRenameChat;newEl.title='Click to rename';
+    newEl.textContent=val;
+    inp.replaceWith(newEl);
+    renameSession(val);
+  };
+  inp.onblur=commit;
+  inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=curSession.name;inp.blur();}};
+}
+
+// AI-generated rename after first exchange
+async function aiRenameSession(){
+  if(!curSession||!geminiKey)return;
+  const msgs=chatHistory.filter(m=>m.role!=='system').slice(0,4);
+  if(msgs.length<2)return;
+  try{
+    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+geminiKey},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[
+        {role:'system',content:'You generate very short chat titles (3–5 words max). Reply with ONLY the title, no punctuation, no quotes.'},
+        {role:'user',content:'Generate a title for this chat:\n'+msgs.map(m=>(m.role==='user'?'User: ':'AI: ')+m.text.substring(0,120)).join('\n')}
+      ],max_tokens:20})
+    });
+    const d=await r.json();
+    const title=d.choices?.[0]?.message?.content?.trim().replace(/^["']|["']$/g,'');
+    if(title&&title.length>0&&title.length<50){renameSession(title);}
+  }catch{}
+}
+
+// ── File Attach ──
+function onChatFileAttach(e){
+  const files=[...e.target.files];e.target.value='';
+  files.forEach(f=>{if(!attachedFiles.find(a=>a.name===f.name))attachedFiles.push(f);});
+  renderAttachBar();
+}
+
+function removeAttach(name){
+  attachedFiles=attachedFiles.filter(f=>f.name!==name);
+  renderAttachBar();
+}
+
+function renderAttachBar(){
+  const bar=document.getElementById('attach-bar');if(!bar)return;
+  if(!attachedFiles.length){bar.classList.remove('on');bar.innerHTML='';return;}
+  bar.classList.add('on');
+  bar.innerHTML=attachedFiles.map(f=>`
+    <div class="attach-chip">📎 ${esc(f.name.length>22?f.name.substring(0,20)+'…':f.name)}
+      <button onclick="removeAttach('${esc2(f.name)}')" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+async function readFileText(file){
+  // PDFs → use PDF.js
+  if(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')){
+    return new Promise((res,rej)=>{
+      const reader=new FileReader();
+      reader.onload=async e=>{
+        try{const text=await extractPDFText(e.target.result);res(text||'[PDF text extraction failed]');}
+        catch{rej(new Error('PDF read failed'));}
+      };
+      reader.onerror=()=>rej(new Error('Read failed'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+  return new Promise((res,rej)=>{
+    const reader=new FileReader();
+    reader.onload=e=>res(e.target.result);
+    reader.onerror=()=>rej(new Error('Read failed'));
+    if(file.type.startsWith('image/'))reader.readAsDataURL(file);
+    else reader.readAsText(file);
+  });
+}
+
+function summarizeDrivePrompt(){
+  const inp=document.getElementById('cinput');if(!inp)return;
+  inp.value='Summarize the files from our Drive for '+( sClass||'this class');
+  inp.focus();
+}
+
+// ── Main Chat ──
+function toggleChat(){
+  chatOpen=!chatOpen;
+  const panel=document.getElementById('chat-panel');
+  const fab=document.getElementById('chat-fab');
+  panel.classList.toggle('on',chatOpen);
+  fab.classList.toggle('on',chatOpen);
+  if(chatOpen){renderChatBody();setTimeout(()=>{const i=document.getElementById('cinput');if(i){i.focus();}},300);}
+}
+
+function renderChatBody(){
+  const body=document.getElementById('chat-body');if(!body)return;
+  if(!geminiKey){
+    const inputRow=document.getElementById('chat-input-row');
+    if(inputRow)inputRow.style.display='none';
+    body.innerHTML=`
+      <div class="gemini-setup" style="flex:1;overflow-y:auto;">
+        <p>To enable AI support, paste your <strong style="color:var(--text)">Groq API key</strong> below.</p>
+        <p>Get one free at <a href="https://console.groq.com/keys" target="_blank">console.groq.com</a> → API Keys</p>
+        <div class="field"><label>Groq API Key</label><input type="text" id="gkey-inp" placeholder="gsk_..." style="background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:13px;outline:none;width:100%;"/></div>
+        <button class="btn btn-p" onclick="saveGKey()" style="margin-top:4px">Save & Start Chatting</button>
+      </div>
+    `;
+    return;
+  }
+  chatHistory=curSession?.history||[];
+  const titleEl=document.getElementById('chat-title');
+  if(titleEl)titleEl.textContent=curSession?.name||'Xavier\'s AI';
+  body.innerHTML=`<div class="chat-msgs" id="cmsgs"></div>`;
+  // Show the persistent input row
+  const inputRow=document.getElementById('chat-input-row');
+  if(inputRow){inputRow.style.display='flex';}
+  renderMsgs();
+  if(!chatHistory.length){
+    addAIMsg(`Hi! I'm Xavier's AI 👋\nI can help you with:\n• Explaining concepts & answering study questions\n• Summarizing files from Drive — just ask!\n• Attaching your own files with the + button below\n• Listing what's available in the school Drive\n\nWhat would you like to learn today?`,false,false);
+  }
+}
+
+function saveGKey(){
+  const k=document.getElementById('gkey-inp')?.value?.trim();
+  if(!k){toast('Enter your API key','err');return;}
+  geminiKey=k;sc({gkey:k});
+  renderChatBody();
+}
+
+function addAIMsg(text,save=true,animate=true){
+  const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  const msg={role:'ai',text,time};
+  chatHistory.push(msg);
+  if(save&&curSession){curSession.history=chatHistory;saveSessions();}
+
+  // Render all previous messages statically, then animate the new one
+  const el=document.getElementById('cmsgs');if(!el)return;
+  el.innerHTML=chatHistory.slice(0,-1).map(m=>`
+    <div class="msg ${m.role}">
+      <div class="msg-bubble">${esc(m.text).replace(/\n/g,'<br/>')}</div>
+      <div class="msg-time">${m.time}</div>
+    </div>
+  `).join('');
+
+  // Create the new AI bubble
+  const wrap=document.createElement('div');
+  wrap.className='msg ai';
+  const bubble=document.createElement('div');
+  bubble.className='msg-bubble';
+  const timeEl=document.createElement('div');
+  timeEl.className='msg-time';
+  timeEl.textContent=time;
+  wrap.appendChild(bubble);
+  wrap.appendChild(timeEl);
+  el.appendChild(wrap);
+
+  if(animate){
+    // Claude-style: fast streaming, ~600 chars/sec, batched for smoothness
+    let i=0;
+    const BATCH=3; // chars per tick
+    const MS=5;    // ms per tick → ~600 chars/sec, feels like real streaming
+    function tick(){
+      if(i>=text.length)return;
+      i=Math.min(i+BATCH,text.length);
+      bubble.innerHTML=esc(text.slice(0,i)).replace(/\n/g,'<br/>');
+      el.scrollTop=el.scrollHeight;
+      setTimeout(tick,MS);
+    }
+    tick();
+  } else {
+    bubble.innerHTML=esc(text).replace(/\n/g,'<br/>');
+    el.scrollTop=el.scrollHeight;
+  }
+}
+
+function renderMsgs(){
+  const el=document.getElementById('cmsgs');if(!el)return;
+  el.innerHTML=chatHistory.map(m=>`
+    <div class="msg ${m.role}">
+      <div class="msg-bubble">${esc(m.text).replace(/\n/g,'<br/>')}</div>
+      <div class="msg-time">${m.time}</div>
+    </div>
+  `).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+function showTyping(){
+  const el=document.getElementById('cmsgs');if(!el)return;
+  const d=document.createElement('div');
+  d.className='msg ai';d.id='typing-bubble';
+  d.innerHTML='<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+
+function removeTyping(){
+  const t=document.getElementById('typing-bubble');if(t)t.remove();
+}
+
+async function sendMsg(){
+  const inp=document.getElementById('cinput');if(!inp)return;
+  const text=inp.value.trim();
+  if(!text&&!attachedFiles.length)return;
+  inp.value='';
+  const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+
+  // Build user message with file info
+  let userText=text;
+  let fileContents='';
+  let imageAttachments=[]; // {base64, mimeType, name}
+
+  // ── 1. Locally attached files ──
+  if(attachedFiles.length){
+    const names=attachedFiles.map(f=>f.name).join(', ');
+    userText=(text||'Summarize the attached file(s)')+'\n[Attached: '+names+']';
+    for(const f of attachedFiles){
+      try{
+        if(f.type.startsWith('image/')){
+          // Read as base64 for vision
+          const dataUrl=await new Promise((res,rej)=>{
+            const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=()=>rej(new Error('read failed'));
+            r.readAsDataURL(f);
+          });
+          const base64=dataUrl.split(',')[1];
+          imageAttachments.push({base64,mimeType:f.type,name:f.name});
+        } else {
+          const txt=await readFileText(f);
+          fileContents+=`\n\n--- FILE: ${f.name} ---\n${txt.substring(0,8000)}\n--- END FILE ---`;
+        }
+      }catch{fileContents+=`\n\n[Could not read: ${f.name}]`;}
+    }
+    attachedFiles=[];renderAttachBar();
+  }
+
+  // ── 2. Auto Drive summarize: if user asks about a file and no local attach ──
+  if(!fileContents && isSummarizeIntent(text)){
+    // Make sure Drive index is loaded
+    if(!driveIndexLoaded){
+      showTyping();
+      await fetchDriveIndex();
+      removeTyping();
+    }
+    if(driveIndex.length){
+      const matches=findRelevantFiles(text);
+      if(matches.length){
+        // Show a small status in the bubble area
+        showTyping();
+        let fetchedAny=false;
+        for(const f of matches){
+          const content=await fetchDriveFileContent(f);
+          if(content&&content.trim().length>20){
+            let meta='';try{const m=JSON.parse(f.description||'{}');meta=[m.cls,m.sub,m.chp].filter(Boolean).join(' · ');}catch{}
+            fileContents+=`\n\n--- DRIVE FILE: ${f.name}${meta?' ('+meta+')':''} ---\n${content}\n--- END FILE ---`;
+            fetchedAny=true;
+          }
+        }
+        removeTyping();
+        if(fetchedAny){
+          userText=text+'\n[Auto-fetched from Drive: '+matches.map(f=>f.name).join(', ')+']';
+        } else {
+          // Files found but couldn't read (binary, permissions); mention them anyway
+          userText=text;
+          fileContents=`\n\n[Drive files found but content could not be extracted: ${matches.map(f=>f.name).join(', ')}. Summarize based on filenames and metadata.]`;
+        }
+      } else {
+        // No match found — tell the AI what files exist so it can say "not found"
+        const listing=driveIndex.slice(0,30).map(f=>{
+          let meta='';try{const m=JSON.parse(f.description||'{}');meta=[m.cls,m.sub,m.chp].filter(Boolean).join(', ');}catch{}
+          return `• ${f.name}${meta?' ['+meta+']':''}`;
+        }).join('\n');
+        fileContents=`\n\n[Drive file listing (${driveIndex.length} files total):\n${listing}\n\nNo file closely matched the user's query. Let the user know what's available.]`;
+      }
+    } else {
+      // Drive is empty or not loaded
+      fileContents=`\n\n[Drive index: no files found or drive not accessible yet.]`;
+    }
+  }
+
+  // ── 3. If user asks "what files do we have" type questions ──
+  const isListIntent=/\b(list|show|what files|which files|what's (in|on) (the )?drive|all files|available files)\b/i.test(text);
+  if(!fileContents && isListIntent && driveIndex.length){
+    const listing=driveIndex.slice(0,40).map(f=>{
+      let meta='';try{const m=JSON.parse(f.description||'{}');meta=[m.cls,m.sub,m.chp].filter(Boolean).join(', ');}catch{}
+      return `• ${f.name}${meta?' ['+meta+']':''}`;
+    }).join('\n');
+    fileContents=`\n\n[Current Drive file listing (${driveIndex.length} files):\n${listing}]`;
+  }
+
+  chatHistory.push({role:'user',text:userText,time});
+  if(curSession){curSession.history=chatHistory;saveSessions();}
+  renderMsgs();showTyping();
+
+  try{
+    const sysPrompt=`You are Xavier Assistant, a helpful academic AI for St. Xavier's School, Gaushala Road, Muzaffarpur. Help students and teachers with academic queries, subject explanations, summarizations, and study support. Keep responses clear and appropriate for school students. Current user role: ${role}${sClass?', Class: '+sClass:''}.
+
+You have access to the school Drive. When file content is provided below, use it to summarize or answer questions. When a file listing is provided, use it to tell the user what's available.${fileContents?'\n\nContext from Drive / attached files:'+fileContents:''}`;
+
+    // Build message history, and for the latest user message include any images
+    const histMsgs=chatHistory.filter(m=>m.role!=='system').slice(-13,-1).map(m=>({role:m.role==='user'?'user':'assistant',content:m.text}));
+
+    // Build the current user message content (may include images)
+    let userContent;
+    if(imageAttachments.length){
+      userContent=[
+        ...imageAttachments.map(img=>({type:'image_url',image_url:{url:`data:${img.mimeType};base64,${img.base64}`}})),
+        {type:'text',text:userText+(fileContents?'\n\nAdditional file context:'+fileContents:'')}
+      ];
+    } else {
+      userContent=userText+(fileContents?'\n\nAdditional file context:'+fileContents:'');
+    }
+
+    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+geminiKey},
+      body:JSON.stringify({model:imageAttachments.length?'meta-llama/llama-4-scout-17b-16e-instruct':'llama-3.3-70b-versatile',messages:[{role:'system',content:sysPrompt},...histMsgs,{role:'user',content:userContent}],max_tokens:1500})
+    });
+    const d=await r.json();
+    removeTyping();
+    if(d.error){addAIMsg('Error: '+d.error.message);return;}
+    const reply=d.choices?.[0]?.message?.content||'Sorry, no response.';
+    addAIMsg(reply);
+    // AI auto-rename after first exchange
+    if(chatHistory.filter(m=>m.role!=='system').length===2)aiRenameSession();
+    renderSessionsList();
+  }catch(e){removeTyping();addAIMsg('Connection error. Check your API key and internet.');}
+}
+
+// ══ LOGBOOK ══════════════════════════════════════
+function loadLogbook(){try{logbookEntries=JSON.parse(localStorage.getItem(LB_KEY)||'[]');}catch{logbookEntries=[];}}
+function saveLogbook(){localStorage.setItem(LB_KEY,JSON.stringify(logbookEntries));}
+
+function renderLogbook(){
+  loadLogbook();
+  const isT=role==='teacher';
+  document.getElementById('mbody').innerHTML=`
+    <div class="ph"><div><h2>📓 Logbook</h2><p>Class activity photos, filtered by date, class & section</p></div></div>
+    ${isT?`
+    <div class="lb-add-form">
+      <div style="font-size:13px;font-weight:700">➕ Add Logbook Entry</div>
+      <div class="selrow">
+        <div class="field"><label>Class *</label><select id="lb-cls"><option value="">Select class...</option>${CLASSES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div class="field"><label>Section *</label><select id="lb-sec"><option value="">Section...</option>${SECTIONS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      </div>
+      <div class="field"><label>Date</label><input type="date" id="lb-date" value="${new Date().toISOString().split('T')[0]}"/></div>
+      <div class="field"><label>Caption (optional)</label><input type="text" id="lb-cap" placeholder="What happened today..."/></div>
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);display:block;margin-bottom:6px">Photos *</label>
+        <input type="file" id="lb-imgs" multiple accept="image/*" onchange="previewLBImgs(this)" style="display:none"/>
+        <button class="btn btn-o btn-sm" onclick="document.getElementById('lb-imgs').click()">📷 Select Photos</button>
+        <div class="lb-preview" id="lb-preview"></div>
+      </div>
+      <button class="btn btn-p" onclick="submitLogbook()">📤 Upload Entry</button>
+      <div class="prog" id="lb-prog" style="display:none"><div class="pt"><span id="lb-pn">Uploading...</span><span id="lb-pp">0%</span></div><div class="pb"><div class="pf" id="lb-pb"></div></div></div>
+    </div>`:''}
+    <div class="lb-filters">
+      <input type="date" id="lbf-date" onchange="filterLogbook()" placeholder="Filter by date"/>
+      <select id="lbf-cls" onchange="filterLogbook()"><option value="">All Classes</option>${CLASSES.map(c=>`<option>${c}</option>`).join('')}</select>
+      <select id="lbf-sec" onchange="filterLogbook()"><option value="">All Sections</option>${SECTIONS.map(s=>`<option>${s}</option>`).join('')}</select>
+    </div>
+    <div class="lb-grid" id="lb-grid"></div>
+  `;
+  filterLogbook();
+}
+
+function previewLBImgs(inp){
+  const pre=document.getElementById('lb-preview');if(!pre)return;
+  pre.innerHTML='';
+  [...inp.files].forEach(f=>{
+    const url=URL.createObjectURL(f);
+    const img=document.createElement('img');img.src=url;pre.appendChild(img);
+  });
+}
+
+async function submitLogbook(){
+  const cls=document.getElementById('lb-cls')?.value;
+  const sec=document.getElementById('lb-sec')?.value;
+  const date=document.getElementById('lb-date')?.value||new Date().toISOString().split('T')[0];
+  const cap=document.getElementById('lb-cap')?.value?.trim()||'';
+  const files=[...document.getElementById('lb-imgs')?.files||[]];
+  if(!cls){toast('Select a class','err');return;}
+  if(!sec){toast('Select a section','err');return;}
+  if(!files.length){toast('Add at least one photo','err');return;}
+  if(!token){toast('Not signed in','err');return;}
+
+  const prog=document.getElementById('lb-prog');
+  const bar=document.getElementById('lb-pb');
+  const pct=document.getElementById('lb-pp');
+  const fn=document.getElementById('lb-pn');
+  if(prog)prog.style.display='flex';
+
+  const lbFolder=await getLogbookFolder();
+  const entryId='lb'+Date.now();
+  const uploadedImgs=[];
+
+  for(let idx=0;idx<files.length;idx++){
+    const f=files[idx];
+    if(fn)fn.textContent=`Uploading ${idx+1}/${files.length}: ${f.name}`;
+    const imgId=await upLogbookImg(f,lbFolder,cls,sec,date,cap,bar,pct);
+    if(imgId)uploadedImgs.push({id:imgId,name:f.name});
+  }
+
+  if(prog)prog.style.display='none';
+
+  if(uploadedImgs.length){
+    logbookEntries.unshift({id:entryId,cls,sec,date,cap,imgs:uploadedImgs,ts:Date.now()});
+    saveLogbook();
+    toast(`✅ Logbook entry added (${uploadedImgs.length} photos)`,'ok');
+    renderLogbook();
+  }
+}
+
+function upLogbookImg(file,folderId,cls,sec,date,cap,bar,pct){
+  return new Promise(res=>{
+    const meta={name:file.name,parents:[folderId],description:JSON.stringify({cls,sec,date,cap,type:'logbook'})};
+    const form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+    form.append('file',file);
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST','https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+    xhr.setRequestHeader('Authorization',`Bearer ${token}`);
+    xhr.upload.onprogress=e=>{if(e.lengthComputable){const p=Math.round(e.loaded/e.total*100);if(bar)bar.style.width=p+'%';if(pct)pct.textContent=p+'%';}};
+    xhr.onload=()=>{
+      if(xhr.status===200){try{const d=JSON.parse(xhr.responseText);mkPub(d.id);res(d.id);}catch{res(null);}}
+      else res(null);
+    };
+    xhr.onerror=()=>res(null);
+    xhr.send(form);
+  });
+}
+
+function filterLogbook(){
+  const date=document.getElementById('lbf-date')?.value||'';
+  const cls=document.getElementById('lbf-cls')?.value||'';
+  const sec=document.getElementById('lbf-sec')?.value||'';
+  let entries=logbookEntries;
+  if(date)entries=entries.filter(e=>e.date===date);
+  if(cls)entries=entries.filter(e=>e.cls===cls);
+  if(sec)entries=entries.filter(e=>e.sec===sec);
+  // Students only see their class
+  if(role==='student'&&sClass)entries=entries.filter(e=>e.cls===sClass);
+  const grid=document.getElementById('lb-grid');if(!grid)return;
+  if(!entries.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="ei">📷</div><p>No logbook entries found.</p></div>';return;}
+  grid.innerHTML=entries.map((e,ei)=>
+    e.imgs.map((img,ii)=>`
+      <div class="lb-card" style="animation-delay:${(ei*e.imgs.length+ii)*.04}s">
+        <img class="lb-img" src="https://drive.google.com/thumbnail?id=${img.id}&sz=w400" alt="Logbook photo" loading="lazy" onerror="this.style.background='var(--s2)';this.style.minHeight='120px'"/>
+        <div class="lb-info">
+          <div class="lbi-top">${esc(e.cls)} · ${esc(e.sec)}</div>
+          <div class="lbi-bot">${esc(e.date)}${e.cap?' · '+esc(e.cap):''}</div>
+        </div>
+      </div>
+    `).join('')
+  ).join('');
+}
+
+// ══ ANNOUNCEMENTS ════════════════════════════════
+function loadAnnouncements(){try{announcements=JSON.parse(localStorage.getItem(AN_KEY)||'[]');}catch{announcements=[];}}
+function saveAnnouncements(){localStorage.setItem(AN_KEY,JSON.stringify(announcements));}
+
+function renderAnnouncements(){
+  loadAnnouncements();
+  const isT=role==='teacher';
+  document.getElementById('mbody').innerHTML=`
+    <div class="ph"><div><h2>📢 Notices & Announcements</h2><p>${isT?'Post notices to specific classes or the whole school':'Latest notices from your school'}</p></div></div>
+    ${isT?`
+    <div class="an-form">
+      <div style="font-size:13px;font-weight:700">📝 New Announcement</div>
+      <div class="field"><label>Title *</label><input type="text" id="an-title" placeholder="Announcement title..."/></div>
+      <div class="field"><label>Message</label><textarea id="an-body" rows="3" placeholder="Write your announcement here..."></textarea></div>
+      <div class="selrow">
+        <div class="field"><label>For</label>
+          <select id="an-target" onchange="document.getElementById('an-cls-wrap').style.display=this.value==='class'?'':'none'">
+            <option value="all">🏫 Entire School</option>
+            <option value="class">📚 Specific Class</option>
+          </select>
+        </div>
+        <div class="field" id="an-cls-wrap" style="display:none"><label>Class</label><select id="an-cls"><option value="">Select...</option>${CLASSES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);display:block;margin-bottom:6px">Attachments (optional)</label>
+        <input type="file" id="an-files" multiple accept=".pdf,image/*" style="display:none" onchange="previewANFiles(this)"/>
+        <button class="btn btn-o btn-sm" onclick="document.getElementById('an-files').click()">📎 Attach Files</button>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px" id="an-att-preview"></div>
+      </div>
+      <button class="btn btn-p" onclick="submitAnnouncement()">📢 Post Announcement</button>
+    </div>`:''}
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px" id="an-list"></div>
+  `;
+  renderAnnouncementList();
+}
+
+function previewANFiles(inp){
+  const pre=document.getElementById('an-att-preview');if(!pre)return;
+  pre.innerHTML=[...inp.files].map(f=>`<div class="attach-chip">📎 ${esc(f.name.length>20?f.name.substring(0,18)+'…':f.name)}</div>`).join('');
+}
+
+async function submitAnnouncement(){
+  const title=document.getElementById('an-title')?.value?.trim();
+  const body=document.getElementById('an-body')?.value?.trim()||'';
+  const target=document.getElementById('an-target')?.value||'all';
+  const cls=target==='class'?(document.getElementById('an-cls')?.value||''):'';
+  const files=[...document.getElementById('an-files')?.files||[]];
+  if(!title){toast('Enter a title','err');return;}
+  if(target==='class'&&!cls){toast('Select a class','err');return;}
+
+  let attachments=[];
+  if(files.length&&token){
+    const anFolder=await getAnnouncementsFolder();
+    for(const f of files){
+      const aid=await upAnnouncementFile(f,anFolder,cls||'school');
+      if(aid)attachments.push({id:aid,name:f.name,type:f.type});
+    }
+  }
+
+  const entry={id:'an'+Date.now(),title,body,target,cls,attachments,ts:Date.now(),
+    date:new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}),
+    time:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})};
+  announcements.unshift(entry);
+  saveAnnouncements();
+  toast('📢 Announcement posted!','ok');
+  renderAnnouncements();
+}
+
+function upAnnouncementFile(file,folderId,cls){
+  return new Promise(res=>{
+    const meta={name:file.name,parents:[folderId],description:JSON.stringify({cls,type:'announcement'})};
+    const form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+    form.append('file',file);
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST',WORKER+'/drive/upload');
+    xhr.withCredentials=true;
+    xhr.onload=()=>{
+      if(xhr.status===200){try{const d=JSON.parse(xhr.responseText);res(d.id);}catch{res(null);}}
+      else res(null);
+    };
+    xhr.onerror=()=>res(null);
+    xhr.send(form);
+  });
+}
+
+function renderAnnouncementList(){
+  loadAnnouncements();
+  let list=announcements;
+  // Students only see school-wide or their class
+  if(role==='student'&&sClass)list=list.filter(a=>a.target==='all'||a.cls===sClass);
+  const el=document.getElementById('an-list');if(!el)return;
+  if(!list.length){el.innerHTML='<div class="empty"><div class="ei">📭</div><p>No announcements yet.</p></div>';return;}
+  el.innerHTML=list.map((a,i)=>`
+    <div class="an-card ${a.target==='all'?'school-wide':''}" style="animation-delay:${i*.05}s">
+      <div class="an-header">
+        <div class="an-title">${esc(a.title)}</div>
+        <span class="an-badge ${a.target==='all'?'all':'cls'}">${a.target==='all'?'🏫 School':esc(a.cls)}</span>
+      </div>
+      ${a.body?`<div class="an-body">${esc(a.body)}</div>`:''}
+      ${a.attachments?.length?`<div class="an-attachments">${a.attachments.map(att=>`
+        <a class="an-att" href="https://drive.google.com/uc?export=download&id=${att.id}" target="_blank">
+          ${att.type?.startsWith('image/')?'🖼️':'📄'} ${esc(att.name.length>24?att.name.substring(0,22)+'…':att.name)}
+        </a>`).join('')}</div>`:''}
+      <div class="an-meta">
+        <span>📅 ${esc(a.date)} at ${esc(a.time)}</span>
+      </div>
+      ${role==='teacher'?`<button class="btn btn-d btn-sm" onclick="deleteAnnouncement('${a.id}')">🗑 Delete</button>`:''}
+    </div>
+  `).join('');
+}
+
+function deleteAnnouncement(id){
+  if(!confirm('Delete this announcement?'))return;
+  announcements=announcements.filter(a=>a.id!==id);
+  saveAnnouncements();
+  renderAnnouncements();
+}
+
+// ══ TIMETABLE ════════════════════════════════════
+function loadTimetable(){try{timetable=JSON.parse(localStorage.getItem(TT_KEY)||'{}');}catch{timetable={};}}
+function saveTimetable(){localStorage.setItem(TT_KEY,JSON.stringify(timetable));}
+
+function renderTimetable(){
+  loadTimetable();
+  const isT=role==='teacher';
+  const defaultCls=sClass||CLASSES[0];
+  document.getElementById('mbody').innerHTML=`
+    <div class="ph">
+      <div><h2>🗓 Timetable</h2><p>Class-wise weekly schedule</p></div>
+      ${isT?`<button class="btn btn-p btn-sm" onclick="saveTT()">💾 Save</button>`:''}
+    </div>
+    <div class="selrow" style="margin-bottom:8px">
+      <div class="field"><label>Class</label>
+        <select id="tt-cls" onchange="renderTTGrid()">
+          ${CLASSES.map(c=>`<option ${c===defaultCls?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Section</label>
+        <select id="tt-sec" onchange="renderTTGrid()">
+          ${SECTIONS.map(s=>`<option>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="tt-wrap"><table class="tt-table" id="tt-table"></table></div>
+  `;
+  renderTTGrid();
+}
+
+function renderTTGrid(){
+  const cls=document.getElementById('tt-cls')?.value||CLASSES[0];
+  const sec=document.getElementById('tt-sec')?.value||'A';
+  const key=`${cls}_${sec}`;
+  const data=timetable[key]||{};
+  const isT=role==='teacher';
+  const table=document.getElementById('tt-table');if(!table)return;
+
+  let html=`<tr><th>Period</th>${DAYS.map(d=>`<th>${d}</th>`).join('')}</tr>`;
+  PERIODS.forEach(p=>{
+    html+=`<tr><td class="tt-period-col">P${p}</td>${DAYS.map(d=>{
+      const val=data[`${d}_${p}`]||'';
+      return `<td><textarea class="tt-cell" id="tt_${d}_${p}" rows="2" placeholder="Subject / Teacher" ${isT?'':'readonly'}>${esc(val)}</textarea></td>`;
+    }).join('')}</tr>`;
+  });
+  table.innerHTML=html;
+}
+
+function saveTT(){
+  const cls=document.getElementById('tt-cls')?.value||CLASSES[0];
+  const sec=document.getElementById('tt-sec')?.value||'A';
+  const key=`${cls}_${sec}`;
+  timetable[key]={};
+  PERIODS.forEach(p=>{
+    DAYS.forEach(d=>{
+      const val=document.getElementById(`tt_${d}_${p}`)?.value?.trim()||'';
+      if(val)timetable[key][`${d}_${p}`]=val;
+    });
+  });
+  saveTimetable();
+  toast('✅ Timetable saved!','ok');
+}
+
+
+// ══ HELPERS ══════════════════════════════════════
+function ico(m,n){
+  m=m||'';n=(n||'').toLowerCase();
+  if(m.includes('pdf')||n.endsWith('.pdf'))return'📄';
+  if(m.includes('word')||n.endsWith('.docx'))return'📝';
+  if(m.includes('presentation')||n.endsWith('.pptx'))return'📊';
+  if(m.includes('spreadsheet')||n.endsWith('.xlsx'))return'📈';
+  if(m.startsWith('image/'))return'🖼️';
+  if(m.startsWith('video/'))return'🎥';
+  if(m.startsWith('audio/'))return'🎵';
+  if(m.includes('zip'))return'🗜️';
+  return'📁';
+}
+const sz=b=>{if(!b)return'—';b=parseInt(b);if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';if(b<1073741824)return(b/1048576).toFixed(1)+' MB';return(b/1073741824).toFixed(1)+' GB';};
+const dt=d=>{if(!d)return'—';return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});};
+const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc2=s=>(s||'').replace(/'/g,"\\'").replace(/"/g,'\\"');
+
+let _tt;
+function toast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast on '+(type||'');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('on'),3500);
+}
+
+window.onload=init;
+</script>
+</body>
+</html>
