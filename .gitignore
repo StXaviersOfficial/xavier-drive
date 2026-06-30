@@ -1,0 +1,14 @@
+# Secrets — NEVER commit these
+.env.sh
+stxaviers-official-firebase-service-account.json
+*.pem
+*.key
+
+# Build artifacts
+node_modules/
+.wrangler/
+.dev.vars
+
+# OS files
+.DS_Store
+Thumbs.db

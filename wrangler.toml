@@ -1,0 +1,12 @@
+name = "stxaviers-auth"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# KV namespace — ID retrieved from your existing Cloudflare account
+[[kv_namespaces]]
+binding = "KV_SESSIONS"
+id = "ce420bf73a614b1cb1b8b8aa5213f40f"
+
+# Cron Trigger: runs every 30 minutes to auto-end broadcasts over 3 hours.
+[triggers]
+crons = ["*/30 * * * *"]
