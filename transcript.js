@@ -204,28 +204,45 @@ async function main() {
     summary = 'Summary generation failed. Please try again.';
   }
 
-  // Save to Firebase
-  console.log('🔥 Saving to Firebase...');
+  // Save to Firebase VIA the worker (secure — uses shared secret)
+  console.log('🔒 Saving transcript via secure worker endpoint...');
 
-  const safeVideoId = VIDEO_ID.replace(/[^a-zA-Z0-9_-]/g, '');
-  const safeClass = CLASS_NAME.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const WORKER_URL = 'https://stxaviers-auth.quackeditzofficial.workers.dev';
+  const TRANSCRIPT_SECRET = process.env.STX_TRANSCRIPT_SECRET || '';
+
+  if (!TRANSCRIPT_SECRET) {
+    console.error('❌ STX_TRANSCRIPT_SECRET environment variable not set.');
+    console.error('   This secret is required for security — get it from the developer.');
+    console.error('   Set it: echo \'export STX_TRANSCRIPT_SECRET=your_secret\' >> ~/.bashrc && source ~/.bashrc');
+    console.error('\n   Transcript is printed below — copy manually if needed:\n');
+    console.error('--- TRANSCRIPT ---');
+    console.error(fullTranscript);
+    console.error('--- END TRANSCRIPT ---\n');
+    process.exit(1);
+  }
 
   try {
-    await fetch(`${FIREBASE_URL}/transcripts/${safeVideoId}.json`, {
-      method: 'PUT',
+    const res = await fetch(`${WORKER_URL}/api/transcript/verify`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        secret: TRANSCRIPT_SECRET,
+        videoId: VIDEO_ID,
         transcript: fullTranscript,
         summary: summary,
-        class: CLASS_NAME,
-        videoId: VIDEO_ID,
-        generatedAt: new Date().toISOString()
+        className: CLASS_NAME
       })
     });
-    console.log('✅ Saved to Firebase!\n');
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    console.log('✅ Transcript saved securely!\n');
   } catch (e) {
-    console.error('❌ Firebase save failed:', e.message);
-    console.error('   Transcript is still printed below — copy manually if needed.\n');
+    console.error('❌ Secure save failed:', e.message);
+    console.error('   Transcript is printed below — copy manually if needed.\n');
     console.error('--- TRANSCRIPT ---');
     console.error(fullTranscript);
     console.error('--- END TRANSCRIPT ---\n');
