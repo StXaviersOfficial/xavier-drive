@@ -2159,6 +2159,139 @@ async function handleTranscriptVerify(request, env, origin) {
   }
 }
 
+// —— Developer-only: Revoke admin powers ————————————————
+async function handleAdminRevoke(request, env, origin) {
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const sess = await getSession(env, cookies);
+  if (!sess) return json({ error: 'Not authenticated' }, 401, origin);
+  const userEmail = sess.user?.email || '';
+  const roleInfo = await verifyRole(env, userEmail);
+  if (!roleInfo.isDeveloper) return json({ error: 'Developer access required' }, 403, origin);
+  const { email: targetEmail } = await request.json();
+  if (!targetEmail) return json({ error: 'Missing email' }, 400, origin);
+  const targetLower = String(targetEmail).toLowerCase().trim();
+  if (HARDCODED_ADMIN_EMAILS.includes(targetLower)) return json({ error: 'Cannot revoke a hardcoded admin' }, 403, origin);
+  if (targetLower === userEmail.toLowerCase()) return json({ error: 'Cannot revoke your own admin powers' }, 403, origin);
+  try {
+    const ownerToken = await getOwnerToken(env);
+    const headers = { Authorization: `Bearer ${ownerToken}` };
+    const aQ = "name='ADMINS' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+    const aRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(aQ)}&fields=files(id)&pageSize=1`, { headers });
+    const aData = await aRes.json();
+    if (!aData.files || aData.files.length === 0) return json({ error: 'ADMINS folder not found' }, 404, origin);
+    const aFolder = aData.files[0].id;
+    const userQ = `'${aFolder}' in parents and trashed=false and (name='${targetLower}' or name='${targetLower.split('@')[0]}')`;
+    const userRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(userQ)}&fields=files(id,name)&pageSize=10`, { headers });
+    const userData = await userRes.json();
+    if (!userData.files || userData.files.length === 0) return json({ error: 'User is not an admin or already revoked' }, 404, origin);
+    let deleted = 0;
+    for (const f of userData.files) { await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}`, { method: 'DELETE', headers }); deleted++; }
+    if (env.KV_SESSIONS && typeof env.KV_SESSIONS.delete === 'function') { try { await env.KV_SESSIONS.delete('role:' + targetLower); } catch (e) {} }
+    return json({ ok: true, deleted, revoked: targetLower }, 200, origin);
+  } catch (e) { return json({ error: 'Revoke failed: ' + e.message }, 500, origin); }
+}
+
+// —— Developer-only: Promote a teacher to admin ————————————————
+async function handleAdminPromote(request, env, origin) {
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const sess = await getSession(env, cookies);
+  if (!sess) return json({ error: 'Not authenticated' }, 401, origin);
+  const userEmail = sess.user?.email || '';
+  const roleInfo = await verifyRole(env, userEmail);
+  if (!roleInfo.isDeveloper) return json({ error: 'Developer access required' }, 403, origin);
+  const { email: targetEmail } = await request.json();
+  if (!targetEmail) return json({ error: 'Missing email' }, 400, origin);
+  const targetLower = String(targetEmail).toLowerCase().trim();
+  if (!targetLower.includes('@')) return json({ error: 'Invalid email' }, 400, origin);
+  try {
+    const ownerToken = await getOwnerToken(env);
+    const headers = { Authorization: `Bearer ${ownerToken}` };
+    const aQ = "name='ADMINS' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+    const aRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(aQ)}&fields=files(id)&pageSize=1`, { headers });
+    const aData = await aRes.json();
+    let aFolder;
+    if (!aData.files || aData.files.length === 0) {
+      const crRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'ADMINS', mimeType: 'application/vnd.google-apps.folder' }) });
+      aFolder = (await crRes.json()).id;
+    } else { aFolder = aData.files[0].id; }
+    const checkQ = `'${aFolder}' in parents and trashed=false and name='${targetLower}'`;
+    const checkRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(checkQ)}&fields=files(id)&pageSize=1`, { headers });
+    const checkData = await checkRes.json();
+    if (checkData.files && checkData.files.length > 0) return json({ ok: true, already: true, message: 'Already an admin' }, 200, origin);
+    await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: targetLower, parents: [aFolder] }) });
+    if (env.KV_SESSIONS && typeof env.KV_SESSIONS.delete === 'function') { try { await env.KV_SESSIONS.delete('role:' + targetLower); } catch (e) {} }
+    return json({ ok: true, promoted: targetLower }, 200, origin);
+  } catch (e) { return json({ error: 'Promote failed: ' + e.message }, 500, origin); }
+}
+
+// —— Role management: promote / demote / ban (with folder moves) ————
+async function handleChangeUserRole(request, env, origin) {
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const sess = await getSession(env, cookies);
+  if (!sess) return json({ error: 'Not authenticated' }, 401, origin);
+  const requesterEmail = sess.user?.email || '';
+  const requesterRole = await verifyRole(env, requesterEmail);
+  if (!requesterRole.isAdmin && !requesterRole.isDeveloper) return json({ error: 'Admin or developer access required' }, 403, origin);
+  const { email: targetEmail, action } = await request.json();
+  if (!targetEmail || !action) return json({ error: 'Missing email or action' }, 400, origin);
+  const targetLower = String(targetEmail).toLowerCase().trim();
+  if (!targetLower.includes('@')) return json({ error: 'Invalid email' }, 400, origin);
+  const validActions = ['promote-teacher', 'promote-admin', 'demote-teacher', 'demote-student', 'ban'];
+  if (!validActions.includes(action)) return json({ error: 'Invalid action' }, 400, origin);
+  if (targetLower === requesterEmail.toLowerCase()) return json({ error: 'Cannot change your own role' }, 403, origin);
+  if (HARDCODED_ADMIN_EMAILS.includes(targetLower)) return json({ error: 'Cannot modify a hardcoded admin' }, 403, origin);
+  const targetRole = await verifyRole(env, targetLower);
+  if (targetRole.isAdmin && !requesterRole.isDeveloper) return json({ error: 'Only developers can manage admins' }, 403, origin);
+  try {
+    const ownerToken = await getOwnerToken(env);
+    const headers = { Authorization: `Bearer ${ownerToken}` };
+    async function findFolder(name) { const q = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`; const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=1`, { headers }); const d = await r.json(); return d.files && d.files.length > 0 ? d.files[0].id : null; }
+    async function findFileInFolder(folderId, email) { if (!folderId) return []; const q = `'${folderId}' in parents and trashed=false and (name='${email}' or name='${email.split('@')[0]}')`; const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&pageSize=10`, { headers }); const d = await r.json(); return d.files || []; }
+    async function deleteFiles(files) { for (const f of files) { await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}`, { method: 'DELETE', headers }); } }
+    async function createFileInFolder(folderId, email) { if (!folderId) return null; const r = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: email, parents: [folderId] }) }); return (await r.json()).id; }
+    const studentsFolder = await findFolder('STUDENTS');
+    const teachersFolder = await findFolder('TEACHERS');
+    const adminsFolder = await findFolder('ADMINS');
+    let result = { ok: true, action, email: targetLower };
+    if (action === 'ban') { const s = await findFileInFolder(studentsFolder, targetLower); const t = await findFileInFolder(teachersFolder, targetLower); const a = await findFileInFolder(adminsFolder, targetLower); await deleteFiles([...s, ...t, ...a]); result.message = 'Banned'; }
+    else if (action === 'promote-teacher') { const s = await findFileInFolder(studentsFolder, targetLower); await deleteFiles(s); const t = await findFileInFolder(teachersFolder, targetLower); if (t.length === 0) await createFileInFolder(teachersFolder, targetLower); result.message = 'Promoted to Teacher'; }
+    else if (action === 'promote-admin') { const t = await findFileInFolder(teachersFolder, targetLower); if (t.length === 0) await createFileInFolder(teachersFolder, targetLower); const a = await findFileInFolder(adminsFolder, targetLower); if (a.length === 0) await createFileInFolder(adminsFolder, targetLower); result.message = 'Promoted to Admin'; }
+    else if (action === 'demote-teacher') { const a = await findFileInFolder(adminsFolder, targetLower); await deleteFiles(a); const t = await findFileInFolder(teachersFolder, targetLower); if (t.length === 0) await createFileInFolder(teachersFolder, targetLower); result.message = 'Demoted to Teacher'; }
+    else if (action === 'demote-student') { const t = await findFileInFolder(teachersFolder, targetLower); const a = await findFileInFolder(adminsFolder, targetLower); await deleteFiles([...t, ...a]); const s = await findFileInFolder(studentsFolder, targetLower); if (s.length === 0) await createFileInFolder(studentsFolder, targetLower); result.message = 'Demoted to Student'; }
+    if (env.KV_SESSIONS && typeof env.KV_SESSIONS.delete === 'function') { try { await env.KV_SESSIONS.delete('role:' + targetLower); } catch (e) {} }
+    return json(result, 200, origin);
+  } catch (e) { return json({ error: 'Role change failed: ' + e.message }, 500, origin); }
+}
+
+// —— Teacher-only Firebase actions (secured via worker) ————————————
+async function handleLiveChatAction(request, env, origin) {
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const sess = await getSession(env, cookies);
+  if (!sess) return json({ error: 'Not authenticated' }, 401, origin);
+  const userEmail = sess.user?.email || '';
+  const roleInfo = await verifyRole(env, userEmail);
+  if (roleInfo.role !== 'teacher' && !roleInfo.isAdmin) return json({ error: 'Teacher or admin access required' }, 403, origin);
+  const { action, class: className, msgId, handId, mode, studentName } = await request.json();
+  if (!action || !className) return json({ error: 'Missing action or class' }, 400, origin);
+  const safeClass = String(className).replace(/[^a-zA-Z0-9_]/g, '_');
+  const dbUrl = env.FIREBASE_DB_URL;
+  if (!dbUrl) return json({ error: 'Firebase not configured' }, 500, origin);
+  try {
+    if (action === 'approve-msg' && msgId) { await fetch(`${dbUrl}/liveClasses/${safeClass}/chat/${msgId}/flagged.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: 'false' }); return json({ ok: true }, 200, origin); }
+    if (action === 'delete-msg' && msgId) { await fetch(`${dbUrl}/liveClasses/${safeClass}/chat/${msgId}.json`, { method: 'DELETE' }); return json({ ok: true }, 200, origin); }
+    if (action === 'set-mode' && mode) { await fetch(`${dbUrl}/liveClasses/${safeClass}/chatMode.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mode) }); return json({ ok: true }, 200, origin); }
+    if (action === 'call-student' && handId) {
+      await fetch(`${dbUrl}/liveClasses/${safeClass}/hands/${handId}/called.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: 'true' });
+      const sysMsg = { name: 'System', text: `🎤 ${studentName || 'Student'}, you may speak now.`, system: true, ts: Date.now() };
+      await fetch(`${dbUrl}/liveClasses/${safeClass}/chat.json`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sysMsg) });
+      setTimeout(async () => { try { await fetch(`${dbUrl}/liveClasses/${safeClass}/hands/${handId}.json`, { method: 'DELETE' }); } catch (e) {} }, 30000);
+      return json({ ok: true }, 200, origin);
+    }
+    if (action === 'skip-hand' && handId) { await fetch(`${dbUrl}/liveClasses/${safeClass}/hands/${handId}.json`, { method: 'DELETE' }); return json({ ok: true }, 200, origin); }
+    return json({ error: 'Invalid action' }, 400, origin);
+  } catch (e) { return json({ error: 'Firebase action failed: ' + e.message }, 500, origin); }
+}
+
 // —— Main fetch handler ——————————————————————————
 
 export default {
@@ -2200,6 +2333,16 @@ export default {
 
     // Transcript verification (secure — requires shared secret)
     if (path === '/api/transcript/verify' && request.method === 'POST') return handleTranscriptVerify(request, env, origin);
+
+    // Developer-only routes (admin promote/revoke)
+    if (path === '/api/admin/revoke' && request.method === 'POST') return handleAdminRevoke(request, env, origin);
+    if (path === '/api/admin/promote' && request.method === 'POST') return handleAdminPromote(request, env, origin);
+
+    // Role management (promote/demote/ban with folder moves)
+    if (path === '/api/user/role' && request.method === 'POST') return handleChangeUserRole(request, env, origin);
+
+    // Teacher-only live chat actions (secured via worker)
+    if (path === '/api/live/action' && request.method === 'POST') return handleLiveChatAction(request, env, origin);
 
     // Artifact + folder routes (legacy — drive-based)
     if (path === '/api/artifact' && request.method === 'POST') {
