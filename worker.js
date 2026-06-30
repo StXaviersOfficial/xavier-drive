@@ -638,6 +638,92 @@ async function callGroq(env, messages) {
   return data.choices[0]?.message?.content || '';
 }
 
+// ═══════════════════════════════════════════════════════
+// CEREBRAS API — 10 keys stored as Cloudflare secret
+// Used alongside Groq for load balancing
+// ═══════════════════════════════════════════════════════
+
+function getCerebrasKeys(env) {
+  try {
+    if (env.CEREBRAS_KEYS_JSON) return JSON.parse(env.CEREBRAS_KEYS_JSON);
+  } catch (e) { console.warn('CEREBRAS_KEYS_JSON parse error:', e.message); }
+  return [];
+}
+
+const _cerebrasBuckets = new Map();
+const CEREBRAS_RATE_WINDOW_MS = 60_000;
+const CEREBRAS_RATE_LIMIT = 25;
+
+function cerebrasRateCheck(keyIdx) {
+  const key = 'cerebras_' + keyIdx;
+  const now = Date.now();
+  let arr = _cerebrasBuckets.get(key) || [];
+  arr = arr.filter(ts => now - ts < CEREBRAS_RATE_WINDOW_MS);
+  if (arr.length >= CEREBRAS_RATE_LIMIT) return false;
+  arr.push(now);
+  _cerebrasBuckets.set(key, arr);
+  return true;
+}
+
+let _cerebrasKeyIdx = 0;
+function pickCerebrasKey(env) {
+  const keys = getCerebrasKeys(env);
+  if (keys.length === 0) return null;
+  for (let i = 0; i < keys.length; i++) {
+    const idx = (_cerebrasKeyIdx + i) % keys.length;
+    if (cerebrasRateCheck(idx)) {
+      _cerebrasKeyIdx = (idx + 1) % keys.length;
+      return { key: keys[idx], idx };
+    }
+  }
+  return null;
+}
+
+async function callCerebras(env, messages, systemPrompt) {
+  const picked = pickCerebrasKey(env);
+  if (!picked) throw new Error('All Cerebras keys rate-limited');
+  const flatMessages = messages.map(m => {
+    if (Array.isArray(m.content)) {
+      const textPart = m.content.find(c => c.type === 'text');
+      return { role: m.role, content: textPart ? textPart.text : '' };
+    }
+    return m;
+  });
+  const r = await fetch('https://api.cerebras.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${picked.key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b',
+      messages: [{ role: 'system', content: systemPrompt || GROQ_SYSTEM_PROMPT }, ...flatMessages],
+      temperature: 0.7, max_tokens: 4096,
+    }),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Cerebras error: ${r.status}`);
+  }
+  const data = await r.json();
+  return data.choices[0]?.message?.content || '';
+}
+
+// Smart router: randomly pick between Groq and Cerebras for load balancing
+async function callGroqOrCerebras(env, messages, systemPrompt) {
+  const hasGroq = !!env.GROQ_KEY;
+  const picked = pickCerebrasKey(env);
+  if (hasGroq && picked) {
+    if (Math.random() < 0.5) {
+      try { return await callGroq(env, messages); }
+      catch (e) { console.warn('Groq failed, falling back to Cerebras:', e.message); return await callCerebras(env, messages, systemPrompt); }
+    } else {
+      try { return await callCerebras(env, messages, systemPrompt); }
+      catch (e) { console.warn('Cerebras failed, falling back to Groq:', e.message); return await callGroq(env, messages); }
+    }
+  }
+  if (hasGroq) return await callGroq(env, messages);
+  if (picked) return await callCerebras(env, messages, systemPrompt);
+  throw new Error('No AI provider available');
+}
+
 // —— Gemini call ——————————————————————————————————
 
 async function callGemini(env, prompt, systemInstruction = null, jsonMode = false) {
@@ -775,7 +861,7 @@ async function handleAIChat(request, env, origin) {
   try {
     // If forceModel is 'groq' (explicit "Groq:" prefix), use Groq only — no escalation
     if (forceModel === 'groq') {
-      const groqResponse = await callGroq(env, messages);
+      const groqResponse = await callGroqOrCerebras(env, messages);
       return json({
         response: groqResponse,
         model: 'groq',
@@ -805,7 +891,7 @@ async function handleAIChat(request, env, origin) {
       } catch (geminiErr) {
         // ALL Gemini keys exhausted/failed — fall back to Groq instead of erroring out.
         console.error('Gemini forced but all keys failed, falling back to Groq:', geminiErr.message);
-        const groqResponse = await callGroq(env, messages);
+        const groqResponse = await callGroqOrCerebras(env, messages);
         return json({
           response: groqResponse + '\n\n*_(Note: All advanced-model keys are currently exhausted, so the standard model answered instead. Add/rotate Gemini keys in the Worker settings.)_*',
           model: 'groq',
@@ -817,9 +903,9 @@ async function handleAIChat(request, env, origin) {
       }
     }
 
-    // —— Groq-first with intelligent escalation ————
+    // —— Groq/Cerebras-first (Gemini disabled) ————
 
-    const groqResponse = await callGroq(env, messages);
+    const groqResponse = await callGroqOrCerebras(env, messages);
 
     // Check if Groq wants to escalate
     if (false && groqResponse.trim().startsWith('[ESCALATE_TO_GEMINI]')) { // Gemini disabled
@@ -952,30 +1038,18 @@ async function handlePDF(request, env, origin) {
   const sess = await getSession(env, cookies);
   if (!sess) return json({ error: 'Not authenticated' }, 401, origin);
 
-  // Rate limit: 5 PDFs per minute per user (Gemini is expensive)
+  // Rate limit: 5 PDFs per minute per user
   const rl = rateCheck(sess.user?.email || 'anon', 'pdf', 5);
   if (!rl.allowed) {
     return json({ error: 'Too many PDF requests. Please wait ' + rl.retryAfter + 's.' }, 429, origin);
   }
 
-  const { prompt, history, role, email } = await request.json();
+  const { prompt, history, role, email, forceModel } = await request.json();
 
   if (!prompt) return json({ error: 'No prompt provided' }, 400, origin);
 
   const userEmail = email || sess.user?.email || 'unknown';
   const userRole = role || 'student';
-
-  // PDF always uses Gemini — check quota
-  const quota = await checkQuota(env, userEmail, userRole);
-
-  if (!quota.allowed) {
-    return json({
-      error: 'Your daily quota for Advanced Model (Gemini) usage has been reached. PDF creation requires the advanced model. Please try again after midnight.',
-      quotaExhausted: true,
-      quotaUsed: quota.used,
-      quotaLimit: quota.limit,
-    }, 429, origin);
-  }
 
   const recentCtx = (history || []).slice(-4)
     .map(m => `${m.role === 'ai' ? 'Assistant' : 'User'}: ${(m.text || '').substring(0, 200)}`)
@@ -983,18 +1057,17 @@ async function handlePDF(request, env, origin) {
 
   const fullPrompt = `${recentCtx ? `Recent conversation:\n${recentCtx}\n\n` : ''}Request: ${prompt}`;
 
+  // Gemini is disabled — always use Groq/Cerebras for PDF generation
   try {
     const html = await callGroqOrCerebras(env, [
       { role: 'system', content: PDF_SYSTEM_INSTRUCTION },
       { role: 'user', content: fullPrompt },
     ]);
-    await incrementQuota(env, userEmail);
-
     return json({
       html,
       model: 'groq',
-      quotaUsed: quota.used,
-      quotaLimit: quota.limit,
+      quotaUsed: 0,
+      quotaLimit: Infinity,
     }, 200, origin);
   } catch (e) {
     console.error('PDF generation error:', e);

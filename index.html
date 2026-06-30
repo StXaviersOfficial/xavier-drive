@@ -330,7 +330,7 @@ body::before{
 .chat-msgs::-webkit-scrollbar-track{background:transparent;}
 .chat-msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 .msg{display:flex;flex-direction:column;gap:4px;max-width:100%;min-width:0;}
-.msg.user{align-self:flex-end;max-width:80%;}
+.msg.user{align-self:flex-end;max-width:70%;}
 .msg.ai{align-self:flex-start;width:calc(100% - 16px);max-width:calc(100% - 16px);}
 .msg-bubble{padding:10px 14px;border-radius:14px;line-height:1.6;font-size:var(--chat-font-size);font-family:var(--chat-font-family);overflow-wrap:break-word;word-break:break-word;max-width:100%;min-width:0;box-sizing:border-box;}
 .msg-bubble pre{max-width:100%;overflow-x:auto;}
@@ -687,7 +687,7 @@ body::before{
 @keyframes typingB{0%,60%,100%{transform:translateY(0);opacity:0.4}30%{transform:translateY(-6px);opacity:1}}
 
 
-/* Loading screen */#s-loading.on{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#04081c,#0c1238,#080c28);}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse-glow{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}/* Improved chat layout */.chat-msgs{padding:16px 12px 80px;}.msg{margin-bottom:16px !important;}.msg-bubble{max-width:85% !important;}.msg.user .msg-bubble{padding:14px 20px !important;border-radius:18px 18px 4px 18px !important;}.msg.ai .msg-bubble{padding:6px 4px !important;border-radius:0 !important;}.chat-input-row{padding:8px 12px !important;}.chat-header{padding:10px 14px !important;}
+/* Loading screen */#s-loading.on{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#04081c,#0c1238,#080c28);}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse-glow{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}/* Improved chat layout */.chat-msgs{padding:16px 12px 80px;}.msg{margin-bottom:16px !important;}.msg.user{max-width:70% !important;}.msg.ai{max-width:100% !important;}.msg.user .msg-bubble{padding:14px 20px !important;border-radius:20px 20px 6px 20px !important;word-break:break-word !important;overflow-wrap:break-word !important;}.msg.ai .msg-bubble{padding:6px 4px !important;border-radius:0 !important;}.chat-input-row{padding:8px 12px !important;}.chat-header{padding:10px 14px !important;}
 
 /* ═══ LIVE CLASSES UI ═══ */
 .live-wrap{padding:14px 12px 80px;max-width:1200px;margin:0 auto;}
@@ -1220,19 +1220,21 @@ a:focus{outline:none;}
   display:flex;
   justify-content:flex-end;
   margin-bottom:14px !important;
+  padding-right:0;
 }
 .msg.user .msg-bubble{
   background:linear-gradient(135deg,var(--a1),var(--a2)) !important;
   color:#fff !important;
-  padding:16px 24px !important;
-  border-radius:20px 20px 4px 20px !important;
-  max-width:85% !important;
+  padding:14px 20px !important;
+  border-radius:20px 20px 6px 20px !important;
+  max-width:100% !important;
   font-size:var(--chat-font-size,15px) !important;
-  line-height:1.65;
-  box-shadow:0 4px 20px var(--a1)30;
-  min-height:52px;
-  display:flex;
-  align-items:center;
+  line-height:1.6;
+  box-shadow:0 4px 16px var(--a1)25;
+  word-break:break-word;
+  overflow-wrap:break-word;
+  hyphens:auto;
+  text-align:left;
 }
 
 /* AI avatar — small circle with sparkle icon */
@@ -2080,10 +2082,7 @@ const CLASSES_KEY='xd_classes', SUBJECTS_KEY='xd_subjects';
 // GEMINI KEY ROTATION
 // ═══════════════════════════════════════════════════
 // API keys are now in Cloudflare Worker secrets
-const GEMINI_KEYS=[];
-let _geminiKeyIdx=0;
-function getGeminiKey(){return GEMINI_KEYS[_geminiKeyIdx%GEMINI_KEYS.length];}
-function rotateGeminiKey(){_geminiKeyIdx=(_geminiKeyIdx+1)%GEMINI_KEYS.length;console.warn('Gemini key rotated → idx',_geminiKeyIdx);}
+// Gemini keys removed from frontend — all AI calls go through the worker
 
 // AI chat now goes through the Worker - never exposes API keys
 async function callAI(message,opts={}){
@@ -2776,7 +2775,7 @@ function openProfileMenu(){
   if(ov){ov.remove();return;}
   ov=document.createElement('div');
   ov.id='profile-menu-ov';
-  ov.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .15s;';
+  ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .15s;';
   const c=lc();
   const pic=c.upic?`<img src="${esc(c.upic)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--border);"/>`:`<div style="width:64px;height:64px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--muted);">${esc((c.uname||'U').charAt(0).toUpperCase())}</div>`;
   ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:18px;width:100%;max-width:340px;padding:24px;box-shadow:0 20px 60px #00000080;animation:springIn .25s cubic-bezier(0.34,1.56,0.64,1);">
@@ -3134,7 +3133,7 @@ async function openAdminPanel(){
   await getUSersFolders();
   const overlay=document.createElement('div');
   overlay.id='admin-panel-overlay';
-  overlay.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s;';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s;';
   overlay.innerHTML=`
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:20px;width:100%;max-width:620px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px #00000080;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">
@@ -3333,7 +3332,7 @@ async function openDeveloperPanel(){
   await getUSersFolders();
   const overlay=document.createElement('div');
   overlay.id='developer-panel-overlay';
-  overlay.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s;';
+  overlay.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s;';
   overlay.innerHTML=`
     <div style="background:var(--bg);border:1px solid #f7c44f40;border-radius:20px;width:100%;max-width:620px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px #00000080,0 0 0 1px #f7c44f20;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #f7c44f30;flex-shrink:0;background:linear-gradient(135deg,#f7c44f08,#ff9e3d05);">
@@ -3553,7 +3552,7 @@ function openRoleMenu(email,currentRole,isLocked,anchorEl){
 
   const ov=document.createElement('div');
   ov.id='role-menu-ov';
-  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:transparent;';
+  ov.style.cssText='position:fixed;inset:0;z-index:10002;background:transparent;';
   ov.addEventListener('click',()=>ov.remove());
 
   const menu=document.createElement('div');
@@ -4113,7 +4112,7 @@ function isSummarizeIntent(text){
 // CHAT INIT & SESSIONS
 // ═══════════════════════════════════════════════════
 async function initChat(){
-  const c=lc();groqKey=sessionStorage.getItem('gkey')||c.gkey||groqKey;
+  const c=lc();
   renderChatBody();
   // Always reload from Drive fresh on init
   userChatFolderId=null; // reset so it re-fetches folder
@@ -5373,7 +5372,7 @@ function openRegisterModal(){
   const sec=document.getElementById('att-section')?.value||SECTIONS[0];
   const ov=document.createElement('div');
   ov.id='register-modal-ov';
-  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s;';
+  ov.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s;';
   ov.innerHTML=`
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:20px;width:100%;max-width:600px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px #00000080;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">
@@ -6145,7 +6144,7 @@ function isPDFRequest(text){
 
 async function handlePDFCreation(userText,forceModel){
   showTyping('Generating beautiful PDF...');
-  // Add a 90-second timeout race — if the worker takes too long, show a helpful error
+  // Add a 3-minute timeout — if the worker takes too long, show a helpful error
   const timeoutMs=180000; // 3 minutes — Groq/Cerebras can take longer for PDFs
   const controller=new AbortController();
   const timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
@@ -6635,14 +6634,7 @@ function startHandListener(className){
     list.innerHTML=hands.map(([id,h])=>`<div class="live-hand-item"><span class="nm">${esc(h.name)}</span><div><button onclick="callOnStudent('${safeClass}','${id}','${esc2(h.name)}')">🎤 Call</button><button class="skip" onclick="skipHand('${safeClass}','${id}')">Skip</button></div></div>`).join('');
   },2000);
 }
-async function setChatMode(mode){
-  if(!liveActiveClass)return;
-  const safeClass=liveActiveClass.replace(/[^a-zA-Z0-9_]/g,'_');
-  await fbPut(`liveClasses/${safeClass}/chatMode`,mode);
-  toast('Mode: '+mode,'ok');
-  document.querySelectorAll('.live-mode-toggle button').forEach(b=>{b.classList.toggle('on',b.textContent.includes(mode==='free'?'Free':mode==='hand'?'Hand':'Mute'));});
-  document.getElementById('hand-queue-section').style.display=mode==='hand'?'block':'none';
-}
+async function setChatMode(mode){if(!liveActiveClass)return;try{await wLive('/api/live/action','POST',{action:'set-mode',class:liveActiveClass,mode});toast('Mode: '+mode,'ok');document.querySelectorAll('.live-mode-toggle button').forEach(b=>{b.classList.toggle('on',b.textContent.includes(mode==='free'?'Free':mode==='hand'?'Hand':'Mute'));});document.getElementById('hand-queue-section').style.display=mode==='hand'?'block':'none';}catch(e){toast('Failed: '+e.message,'err');}}
 async function extendLive(){if(!liveActiveClass)return;try{await wLive('/api/live/extend','POST',{class:liveActiveClass,minutes:30});toast('Extended +30 min','ok');renderLiveActive();}catch(e){toast('Failed: '+e.message,'err');}}
 async function endLiveClass(){
   if(!liveActiveClass)return;
@@ -6666,10 +6658,10 @@ async function endLiveClass(){
       <button class="btn btn-p" style="margin-top:14px;" onclick="renderLiveTab()">Back to Live</button></div>`;
   }catch(e){toast('Failed: '+e.message,'err');}
 }
-async function approveMsg(safeClass,msgId){await fbPut(`liveClasses/${safeClass}/chat/${msgId}/flagged`,false);toast('Approved','ok');}
-async function deleteMsg(safeClass,msgId){await fbDelete(`liveClasses/${safeClass}/chat/${msgId}`);toast('Removed','ok');}
-async function callOnStudent(safeClass,handId,name){await fbPut(`liveClasses/${safeClass}/hands/${handId}/called`,true);await fbPush(`liveClasses/${safeClass}/chat`,{name:'System',text:`🎤 ${name}, you may speak now.`,system:true,ts:Date.now()});setTimeout(()=>fbDelete(`liveClasses/${safeClass}/hands/${handId}`),30000);toast('Called '+name,'ok');}
-async function skipHand(safeClass,handId){await fbDelete(`liveClasses/${safeClass}/hands/${handId}`);}
+async function approveMsg(safeClass,msgId){try{await wLive('/api/live/action','POST',{action:'approve-msg',class:safeClass.replace(/_/g,' '),msgId});toast('Approved','ok');}catch(e){toast('Failed: '+e.message,'err');}}
+async function deleteMsg(safeClass,msgId){try{await wLive('/api/live/action','POST',{action:'delete-msg',class:safeClass.replace(/_/g,' '),msgId});toast('Removed','ok');}catch(e){toast('Failed: '+e.message,'err');}}
+async function callOnStudent(safeClass,handId,name){try{await wLive('/api/live/action','POST',{action:'call-student',class:safeClass.replace(/_/g,' '),handId,studentName:name});toast('Called '+name,'ok');}catch(e){toast('Failed: '+e.message,'err');}}
+async function skipHand(safeClass,handId){try{await wLive('/api/live/action','POST',{action:'skip-hand',class:safeClass.replace(/_/g,' '),handId});}catch(e){toast('Failed: '+e.message,'err');}}
 async function renderStudentLiveList(opts={}){
   // Skip the initial loading state on subsequent polls to avoid wiping chat input
   if(!opts.silent){
