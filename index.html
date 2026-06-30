@@ -133,9 +133,9 @@ body::before{
 .nav-role-badge.developer{background:linear-gradient(135deg,#f7c44f22,#a64ff722);color:var(--a4);border:1px solid #f7c44f40;}
 .nav-role-badge.admin{background:#f7c44f18;color:var(--a4);border:1px solid #f7c44f30;}
 .nav-role-badge.teacher{background:#4f8ef718;color:var(--a1);border:1px solid #4f8ef730;}
-.nav-role-badge.student{background:#f74f7a18;color:var(--a2);border:1px solid #f74f7a30;}
+.nav-role-badge.student{background:linear-gradient(135deg,#f74f7a20,#f74f7a10);color:var(--a2);border:1px solid #f74f7a50;}
 /* Class badge */
-.clsbdg{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--a1)15;color:var(--a1);border:1px solid var(--a1)30;white-space:nowrap;}
+.clsbdg{font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;background:linear-gradient(135deg,var(--a1)20,var(--a3)20);color:var(--a1);border:1px solid var(--a1)50;white-space:nowrap;box-shadow:0 1px 4px var(--a1)20;}
 /* Settings gear */
 .nav-settings-gear{background:transparent;border:none;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:color .15s,transform .2s;padding:0;line-height:1;}
 .nav-settings-gear:hover{color:var(--a1);transform:rotate(45deg);}
@@ -375,7 +375,7 @@ body::before{
 .chat-input-inner:focus-within{border-color:var(--a1);}
 .chat-plus-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;transition:all .15s;flex-shrink:0;margin-bottom:1px;}
 .chat-plus-btn:hover{color:var(--text);background:var(--s2);}
-.chat-input{flex:1;background:transparent;border:none;padding:8px 6px;font-family:var(--chat-font-family);font-size:var(--chat-font-size);color:var(--ai-text-color,var(--text));outline:none;resize:none;max-height:240px;min-height:44px;line-height:1.5;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.chat-input{flex:1;background:transparent;border:none;padding:10px 8px;font-family:var(--chat-font-family);font-size:var(--chat-font-size);color:var(--ai-text-color,var(--text));outline:none;resize:none;max-height:300px;min-height:52px;line-height:1.5;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
 .chat-input::placeholder{color:var(--muted);}
 .chat-send{background:var(--border);border:none;border-radius:9px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:transform .15s,box-shadow .15s;margin-bottom:1px;position:relative;overflow:hidden;}
 .chat-send::before{content:'';position:absolute;inset:0;border-radius:9px;background:linear-gradient(135deg,#ff0000,#ff7700,#ffff00,#00ff00,#0077ff,#8800ff,#ff0000);background-size:400% 400%;animation:rgbCycle 3s linear infinite;opacity:0;transition:opacity .25s;}
@@ -1224,13 +1224,13 @@ a:focus{outline:none;}
 .msg.user .msg-bubble{
   background:linear-gradient(135deg,var(--a1),var(--a2)) !important;
   color:#fff !important;
-  padding:14px 20px !important;
-  border-radius:18px 18px 4px 18px !important;
+  padding:16px 24px !important;
+  border-radius:20px 20px 4px 20px !important;
   max-width:85% !important;
   font-size:var(--chat-font-size,15px) !important;
-  line-height:1.6;
-  box-shadow:0 4px 16px var(--a1)25;
-  min-height:44px;
+  line-height:1.65;
+  box-shadow:0 4px 20px var(--a1)30;
+  min-height:52px;
   display:flex;
   align-items:center;
 }
@@ -1820,8 +1820,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       </button>
       <p style="font-size:11px;color:var(--muted);text-align:center;line-height:1.6;">
         By signing in, you agree to our
-        <a href="terms.html" target="_blank" rel="noopener noreferrer" style="color:var(--a1)">Terms of Service</a> and
-        <a href="privacy.html" target="_blank" rel="noopener noreferrer" style="color:var(--a1)">Privacy Policy</a>.
+        <a href="https://stxaviers.pages.dev/terms.html" target="_blank" rel="noopener noreferrer" style="color:var(--a1)">Terms of Service</a> and
+        <a href="https://stxaviers.pages.dev/privacy.html" target="_blank" rel="noopener noreferrer" style="color:var(--a1)">Privacy Policy</a>.
       </p>
     </div>
   </div>
@@ -2241,11 +2241,18 @@ function setAIBg(value){
   setUserPrefs({chatBg:value});
   applyAIBgValue(value);
   document.querySelectorAll('.bg-swatch').forEach(s=>s.classList.toggle('on',s.dataset.value===value));
-  // Re-apply text color in auto mode so contrast updates with the new background
+  // ALWAYS re-apply text color in auto mode — retrigger every time background changes
   const p=getUserPrefs();
-  if(!p.aiTextColor || p.aiTextColor==='auto'){
-    // Defer to ensure the new background is rendered before sampling
-    setTimeout(()=>applyAITextColor(value),50);
+  if(!p.aiTextColor){
+    // Auto mode — reapply contrast based on new background
+    setTimeout(()=>{
+      applyAITextColor(value);
+      // Also update chat header colors
+      const textColor=getContrastColor(getBgDominantColor(value));
+      document.querySelectorAll('.chat-header-title,.chat-close,.sess-toggle').forEach(el=>{
+        el.style.color=textColor;
+      });
+    },50);
   }
 }
 function applyAIBgValue(value){
@@ -2713,14 +2720,11 @@ function buildNav(){
   let classBadge=role==='student'&&sClass?`<span class="clsbdg" id="clsdsp">${esc(sClass)}</span>`:'';
   let uploadBtn=(role==='teacher'||isAdmin||isDeveloper)?`<button class="nav-upload-btn" onclick="openUploadModal()">📤 Upload</button>`:'';
   const roleIndicator = panelBtn ? panelBtn : `<span class="nav-role-badge ${roleCls}">${roleName}</span>`;
-  // Row 1: role+class (left) | logo (center, 22px) | gear (right)
+  // Row 1: logo (center) + gear (right) ONLY — clean, spacious
   const row1=document.getElementById('nav-row1');
   if(row1){
     row1.innerHTML=`
-      <div class="nav-row1-left">
-        ${roleIndicator}
-        ${classBadge}
-      </div>
+      <div class="nav-row1-left"></div>
       <div class="nav-row1-center">
         <div class="nlogo-new">StXaviersOnline</div>
       </div>
@@ -2729,11 +2733,14 @@ function buildNav(){
       </div>
     `;
   }
-  // Row 2: empty (left) | upload (center, original size) | avatar+name (right)
+  // Row 2: role+class (left) | upload (center) | avatar+name (right)
   const row2=document.getElementById('nav-row2');
   if(row2){
     row2.innerHTML=`
-      <div class="nav-row2-left"></div>
+      <div class="nav-row2-left">
+        ${roleIndicator}
+        ${classBadge}
+      </div>
       <div class="nav-row2-center">
         ${uploadBtn}
       </div>
@@ -2747,7 +2754,7 @@ function buildNav(){
   }
   updateThemeBtn();
 }
-// Open avatar in a full-circle lightbox view
+
 function openAvatarLightbox(){
   const c=lc();
   const photo=c.upic;
@@ -2785,8 +2792,8 @@ function openProfileMenu(){
     ${isDeveloper?`<button class="btn btn-o" style="width:100%;margin-bottom:8px;text-align:left;padding:12px 16px;background:linear-gradient(135deg,#f7c44f10,#ff9e3d08);border-color:#f7c44f30;color:#f7c44f;" onclick="closeProfileMenu();openDeveloperPanel()">⚡ Developer Panel</button>`:(isAdmin?`<button class="btn btn-o" style="width:100%;margin-bottom:8px;text-align:left;padding:12px 16px;" onclick="closeProfileMenu();openAdminPanel()">👑 Admin Panel</button>`:'')}
     <div style="height:1px;background:var(--border);margin:10px 0;"></div>
     <div style="display:flex;gap:8px;margin-bottom:8px;">
-      <a href="privacy.html" target="_blank" rel="noopener noreferrer" style="flex:1;text-decoration:none;"><button class="btn btn-o" style="width:100%;text-align:left;padding:10px 12px;font-size:12px;">🔒 Privacy</button></a>
-      <a href="terms.html" target="_blank" rel="noopener noreferrer" style="flex:1;text-decoration:none;"><button class="btn btn-o" style="width:100%;text-align:left;padding:10px 12px;font-size:12px;">📜 Terms</button></a>
+      <a href="https://stxaviers.pages.dev/privacy.html" target="_blank" rel="noopener noreferrer" style="flex:1;text-decoration:none;"><button class="btn btn-o" style="width:100%;text-align:left;padding:10px 12px;font-size:12px;">🔒 Privacy</button></a>
+      <a href="https://stxaviers.pages.dev/terms.html" target="_blank" rel="noopener noreferrer" style="flex:1;text-decoration:none;"><button class="btn btn-o" style="width:100%;text-align:left;padding:10px 12px;font-size:12px;">📜 Terms</button></a>
     </div>
     <button class="btn btn-p" style="width:100%;background:#f74f7a;" onclick="closeProfileMenu();signOut()">🚪 Sign Out</button>
   </div>`;
@@ -4825,6 +4832,7 @@ async function sendMsg(){
   const text=inp.value.trim();
   if(!text&&!attachedFiles.length)return;
   inp.value='';
+  inp.style.height='52px'; // Reset to min height after send
   const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
   let userText=text,fileContents='',imageAttachments=[];
 
@@ -4906,7 +4914,7 @@ async function sendMsg(){
   }
 
   // ── PDF creation intercept (respects Groq:/Gemini: prefixes) ──
-  if(isPDFRequest(text)&&text.length>15){
+  if(isPDFRequest(text)&&text.length>15||(forceModel==='groq'&&isPDFRequest(text))){
     isGenerating=true;
     showTyping();
     try{await handlePDFCreation(promptText,forceModel);}
@@ -4945,8 +4953,8 @@ SAFETY RULES (CRITICAL):
 - NEVER share admin passwords, API keys, worker URLs, Firebase URLs, or any technical secrets about how the website works
 - NEVER explain how to bypass authentication, role verification, or rate limits
 - NEVER share personal info about other students or teachers
-- Refuse to write complete essays/assignments for students — guide them instead
-- Refuse to give direct answers to obvious homework/test questions — guide them to find the answer
+- For STUDENTS: Refuse to write complete essays/assignments — guide them instead. Refuse to give direct answers to obvious homework/test questions. Do NOT write code for students — guide them to learn.
+- For TEACHERS, ADMINS, DEVELOPERS: No restrictions on coding, lesson planning, worksheets, or content creation. Help fully with any request including writing code, generating worksheets, creating detailed lesson plans, etc.
 - If a request is unsafe, harmful, or asks for secrets, respond with EXACTLY "[CANCEL]" on the first line, then a brief reason on the second line. Do not say anything else.
 
 ROLE-AWARE RESPONSES:
@@ -5030,10 +5038,10 @@ FORMATTING:
 // Auto-grow the chat input textarea (like Claude) — grows as user types, up to 240px
 function autoGrowChatInput(el){
   el.style.height='auto';
-  const maxHeight=240;
-  const newHeight=Math.min(el.scrollHeight,maxHeight);
+  const maxHeight=300;
+  const minHeight=52;
+  const newHeight=Math.max(minHeight,Math.min(el.scrollHeight,maxHeight));
   el.style.height=newHeight+'px';
-  // Show scrollbar only when at max height
   el.style.overflowY=el.scrollHeight>maxHeight?'auto':'hidden';
 }
 
@@ -5651,7 +5659,7 @@ function loadAnnouncements(){/* no-op: fetched from Drive */}
 function saveAnnouncements(){/* no-op */}
 
 function renderAnnouncements(){
-  const isT=role==='teacher'||isAdmin;
+  const isT=role==='teacher'||isAdmin||isDeveloper;
   document.getElementById('mbody').innerHTML=`
     <div class="ph"><div><h2>📢 Notices & Announcements</h2><p>${isT?'Post notices to specific classes or the whole school':'Latest notices from your school'}</p></div></div>
     ${isT?`
@@ -6138,7 +6146,7 @@ function isPDFRequest(text){
 async function handlePDFCreation(userText,forceModel){
   showTyping('Generating beautiful PDF...');
   // Add a 90-second timeout race — if the worker takes too long, show a helpful error
-  const timeoutMs=90000;
+  const timeoutMs=180000; // 3 minutes — Groq/Cerebras can take longer for PDFs
   const controller=new AbortController();
   const timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
   try{

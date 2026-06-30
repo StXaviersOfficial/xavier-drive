@@ -533,7 +533,8 @@ const GROQ_SYSTEM_PROMPT = `You are StXaviersOnline AI, the official AI assistan
 WHO YOU ARE TALKING TO
 ═══════════════════════════════════════════
 The user's role (student/teacher) and class (if student) will be provided in the message. ALWAYS tailor your response to the user's role:
-- STUDENTS: Use simple language appropriate to their class. Be encouraging. Don't give direct answers to homework questions that would let them cheat — instead guide them to find the answer themselves. Refuse to write essays/assignments for them; instead help them brainstorm and structure their own work.
+- STUDENTS: Use simple language. Be encouraging. Don't give direct answers to homework. Refuse to write essays/assignments for them. Do NOT write code for students — guide them to learn.
+- TEACHERS/ADMINS/DEVELOPERS: No content restrictions. Help fully with coding, worksheets, lesson plans, and any request. You CAN write code, generate content, and assist with anything.
 - TEACHERS: Use professional language. You can help with lesson planning, generating worksheets, explaining advanced concepts, summarizing topics, creating quiz questions, etc. Be a teaching assistant.
 
 ═══════════════════════════════════════════
@@ -565,7 +566,7 @@ WHAT YOU CAN DO
 ═══════════════════════════════════════════
 ESCALATION RULES
 ═══════════════════════════════════════════
-If a request requires: PDF creation, image generation, very long essays (>500 words), complex multi-step reasoning, or code generation — respond with EXACTLY "[ESCALATE_TO_GEMINI]" on the first line, then a brief one-line reason on the second line. The app will route to Gemini automatically. Do not say anything else.
+Since Gemini is temporarily disabled, handle ALL requests yourself using your full capabilities. This includes PDF creation, image generation requests, long essays, complex reasoning, and code generation. Do NOT output [ESCALATE_TO_GEMINI] — handle everything directly.
 
 ═══════════════════════════════════════════
 SAFETY — CRITICAL
@@ -791,7 +792,8 @@ async function handleAIChat(request, env, origin) {
     if (forceModel === 'gemini') {
       const quota = await checkQuota(env, userEmail, userRole);
       try {
-        const geminiResponse = await callGemini(env, message);
+        // Gemini removed — using Groq/Cerebras
+        const geminiResponse = await callGroqOrCerebras(env, messages);
         await incrementQuota(env, userEmail);
         return json({
           response: geminiResponse,
@@ -820,7 +822,7 @@ async function handleAIChat(request, env, origin) {
     const groqResponse = await callGroq(env, messages);
 
     // Check if Groq wants to escalate
-    if (groqResponse.trim().startsWith('[ESCALATE_TO_GEMINI]')) {
+    if (false && groqResponse.trim().startsWith('[ESCALATE_TO_GEMINI]')) { // Gemini disabled
       // Groq can't handle this — try Gemini
       const quota = await checkQuota(env, userEmail, userRole);
 
@@ -839,7 +841,8 @@ async function handleAIChat(request, env, origin) {
 
       // Use Gemini — with fallback to Groq if all keys are exhausted
       try {
-        const geminiResponse = await callGemini(env, message);
+        // Gemini removed — using Groq/Cerebras
+        const geminiResponse = await callGroqOrCerebras(env, messages);
         await incrementQuota(env, userEmail);
 
         return json({
@@ -981,13 +984,16 @@ async function handlePDF(request, env, origin) {
   const fullPrompt = `${recentCtx ? `Recent conversation:\n${recentCtx}\n\n` : ''}Request: ${prompt}`;
 
   try {
-    const html = await callGemini(env, fullPrompt, PDF_SYSTEM_INSTRUCTION);
+    const html = await callGroqOrCerebras(env, [
+      { role: 'system', content: PDF_SYSTEM_INSTRUCTION },
+      { role: 'user', content: fullPrompt },
+    ]);
     await incrementQuota(env, userEmail);
 
     return json({
       html,
-      model: 'gemini',
-      quotaUsed: quota.used + 1,
+      model: 'groq',
+      quotaUsed: quota.used,
       quotaLimit: quota.limit,
     }, 200, origin);
   } catch (e) {
@@ -2037,6 +2043,49 @@ async function handleFirebaseHandRaise(request, env, origin) {
   }
 }
 
+// —— Transcript verification ————————————————————
+// transcript.js sends this secret to prove it's the authentic script.
+// The secret is stored as a Cloudflare secret (TRANSCRIPT_SECRET).
+// Without it, the script can't save transcripts to Firebase via the worker.
+// If someone gets transcript.js, they still can't misuse it without this secret.
+
+async function handleTranscriptVerify(request, env, origin) {
+  const { secret, videoId, transcript, summary, className } = await request.json();
+
+  // Verify the shared secret
+  if (!secret || secret !== env.TRANSCRIPT_SECRET) {
+    return json({ error: 'Invalid transcript secret' }, 403, origin);
+  }
+
+  if (!videoId || !transcript) {
+    return json({ error: 'Missing videoId or transcript' }, 400, origin);
+  }
+
+  // Save to Firebase via the worker (not directly from the script)
+  const dbUrl = env.FIREBASE_DB_URL;
+  if (!dbUrl) return json({ error: 'Firebase not configured' }, 500, origin);
+
+  const safeVideoId = String(videoId).replace(/[^a-zA-Z0-9_-]/g, '');
+
+  try {
+    await fetch(`${dbUrl}/transcripts/${safeVideoId}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transcript: String(transcript).substring(0, 100000),
+        summary: String(summary || '').substring(0, 10000),
+        class: String(className || 'Unknown').substring(0, 50),
+        videoId: safeVideoId,
+        generatedAt: new Date().toISOString(),
+        verified: true,
+      }),
+    });
+    return json({ ok: true, videoId: safeVideoId }, 200, origin);
+  } catch (e) {
+    return json({ error: 'Firebase save failed: ' + e.message }, 500, origin);
+  }
+}
+
 // —— Main fetch handler ——————————————————————————
 
 export default {
@@ -2075,6 +2124,9 @@ export default {
     // User profile routes (name + photo saved to Firebase)
     if (path === '/api/user/profile' && request.method === 'GET') return handleUserProfileGet(request, env, origin);
     if (path === '/api/user/profile' && request.method === 'POST') return handleUserProfileSet(request, env, origin);
+
+    // Transcript verification (secure — requires shared secret)
+    if (path === '/api/transcript/verify' && request.method === 'POST') return handleTranscriptVerify(request, env, origin);
 
     // Artifact + folder routes (legacy — drive-based)
     if (path === '/api/artifact' && request.method === 'POST') {
