@@ -695,7 +695,7 @@ async function callCerebras(env, messages, systemPrompt) {
     body: JSON.stringify({
       model: 'llama-3.3-70b',
       messages: [{ role: 'system', content: systemPrompt || GROQ_SYSTEM_PROMPT }, ...flatMessages],
-      temperature: 0.7, max_tokens: 4096,
+      temperature: 0.7, max_tokens: 8192,
     }),
   });
   if (!r.ok) {
@@ -834,13 +834,14 @@ async function handleAIChat(request, env, origin) {
   const actualIsAdmin = verifiedRole.isAdmin;
 
   // Build conversation history for context
-  const messages = (history || []).slice(-10).map(m => ({
+  const messages = (history || []).slice(-30).map(m => ({
     role: m.role === 'ai' ? 'assistant' : 'user',
-    content: (m.text || '').substring(0, 500),
+    content: (m.text || '').substring(0, 2000),
   }));
   // Prepend role context to the user's message so Groq knows who it's talking to.
   // If images are attached, build multimodal content (Groq vision model supports this).
-  const roleContext = `[User Context: role=${actualRole}${actualIsAdmin ? ' (admin)' : ''}${actualRole === 'student' && studentClass ? `, class=${studentClass}` : ''}, email=${userEmail}]\n\nUser message: ${message}`;
+  const conversationSummary = messages.length > 0 ? `\n\n[Previous conversation context — ${messages.length} messages]:\n${messages.map(m => `${m.role}: ${m.content.substring(0, 500)}`).join('\n')}\n\n` : '';
+  const roleContext = `[User Context: role=${actualRole}${actualIsAdmin ? ' (admin)' : ''}${actualRole === 'student' && studentClass ? `, class=${studentClass}` : ''}, email=${userEmail}]${conversationSummary}\n\nUser message: ${message}`;
   // SECURITY: validate images array — cap count and size to prevent abuse
   const safeImages = Array.isArray(images) ? images.slice(0, 4).map(img => ({
     mimeType: String(img.mimeType || 'image/jpeg').substring(0, 50),

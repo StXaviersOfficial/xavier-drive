@@ -2093,7 +2093,7 @@ async function callAI(message,opts={}){
     role:role||'student',
     email:currentUser?.email||'',
     class:sClass||null,
-    history:opts.history||(chatHistory.filter(m=>m.role!=='system').slice(-10)),
+    history:opts.history||(chatHistory.filter(m=>m.role!=='system').slice(-30)),
     forceModel:opts.forceModel||null,
     images:opts.images||null
   };
@@ -4136,22 +4136,33 @@ async function getUserChatFolder(){
 async function loadSessions(){
   try{
     const fid=await getUserChatFolder();
-    const q=`'${fid}' in parents and trashed=false and mimeType='application/json' and name contains 'chat_'`;
-    const r=await wDrv('/drive/files','GET',null,'q='+encodeURIComponent(q)+'&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=100');
-    if(r.files&&r.files.length){
-      const results=await Promise.allSettled(r.files.map(async f=>{
-        const res=await fetch(`${WORKER}/drive/media?id=${encodeURIComponent(f.id)}`,{credentials:'include'});
-        if(!res.ok)throw new Error('fetch failed');
-        const sess=await res.json();
-        sess._driveId=f.id;
-        return sess;
+    // Search for FOLDERS (each chat session is a folder containing chat.json)
+    const folderQ=`'${fid}' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'`;
+    const folderR=await wDrv('/drive/files','GET',null,'q='+encodeURIComponent(folderQ)+'&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=100');
+    if(folderR.files&&folderR.files.length){
+      // For each folder, find and load chat.json inside it
+      const results=await Promise.allSettled(folderR.files.map(async f=>{
+        try{
+          // Search for chat.json inside this folder
+          const fileQ=`'${f.id}' in parents and trashed=false and name='chat.json'`;
+          const fileR=await wDrv('/drive/files','GET',null,'q='+encodeURIComponent(fileQ)+'&fields=files(id,name,modifiedTime)&pageSize=1');
+          if(!fileR.files||fileR.files.length===0)throw new Error('no chat.json');
+          const fileId=fileR.files[0].id;
+          const res=await fetch(`${WORKER}/drive/media?id=${encodeURIComponent(fileId)}`,{credentials:'include'});
+          if(!res.ok)throw new Error('fetch failed');
+          const sess=await res.json();
+          sess._driveId=fileId;
+          sess._folderId=f.id;
+          return sess;
+        }catch(e){throw e;}
       }));
       sessions=results.filter(r=>r.status==='fulfilled'&&r.value?.id).map(r=>r.value);
-      sessions.sort((a,b)=>b.created-a.created);
+      sessions.sort((a,b)=>(b.created||0)-(a.created||0));
       if(sessions.length){
         curSession=sessions[0];
         chatHistory=curSession.history||[];
-        sessions=(sessions||[]).filter(s=>s.history&&s.history.length>0);renderSessionsList();
+        sessions=sessions.filter(s=>s.history&&s.history.length>0);
+        renderSessionsList();
         renderChatBody();
         return;
       }
@@ -4991,7 +5002,7 @@ FORMATTING:
 ⚠️ CRITICAL — IMAGE GENERATION: This app has a BUILT-IN image generator that triggers AUTOMATICALLY when the user explicitly asks to create/generate/draw an image. You do NOT control this. NEVER say "Generating your image now!" or similar — the app handles it before the message reaches you. If you see an image request, it means the app's trigger didn't fire (rare) — in that case, tell the user to use the 🎨 button in the quick menu (lightning bolt icon).
 ⚠️ CRITICAL — PDF CREATION: PDF requests are handled by the app automatically before reaching you. If somehow a PDF request reaches you, just say "Tap the PDF button above or rephrase your request!" Do NOT write PDF content or HTML yourself.${fileContents?'\n\nContext from Drive / attached files:\n'+fileContents:''}`;
 
-  const histMsgs=chatHistory.filter(m=>m.role!=='system').slice(-13,-1).map(m=>({role:m.role==='user'?'user':'assistant',content:m.text||''}));
+  const histMsgs=chatHistory.filter(m=>m.role!=='system').slice(-30,-1).map(m=>({role:m.role==='user'?'user':'assistant',content:m.text||''}));
 
   try{
     let reply='';
@@ -5080,7 +5091,7 @@ async function retryMsg(idx){
   showTyping();
   try{
     // Route through worker — no API key in browser, no direct Groq call
-    const histMsgs=chatHistory.filter(m=>m.role!=='system').slice(-13).map(m=>({role:m.role==='user'?'user':'assistant',content:m.text}));
+    const histMsgs=chatHistory.filter(m=>m.role!=='system').slice(-30).map(m=>({role:m.role==='user'?'user':'assistant',content:m.text}));
     const aiResult=await callAI(lastUser.text,{history:histMsgs});
     removeTyping();
     if(aiResult.quotaExhausted){showQuotaBanner(aiResult.quotaUsed,aiResult.quotaLimit);}
