@@ -19,8 +19,9 @@
 // ============================================================
 
 const SCOPES = 'openid email profile';
-// Owner Drive token scope (full Drive access — matches the original token).
-const OWNER_SCOPES = 'https://www.googleapis.com/auth/drive';
+// Owner Drive token scope: full Drive access + openid/email/profile so Google
+// returns the account email (without it userinfo 403s → "Account unknown").
+const OWNER_SCOPES = 'openid email profile https://www.googleapis.com/auth/drive';
 
 // —— Utilities ————————————————————————————————————
 
@@ -250,7 +251,10 @@ async function handleOwnerLogin(env, origin) {
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('scope', OWNER_SCOPES);
   url.searchParams.set('access_type', 'offline');
-  url.searchParams.set('prompt', 'consent');
+  // select_account forces the account picker so the owner can choose
+  // drrohitkumar27 even if other accounts are signed in; consent guarantees
+  // a fresh refresh_token.
+  url.searchParams.set('prompt', 'select_account consent');
   url.searchParams.set('login_hint', DRIVE_OWNER_EMAIL);
   url.searchParams.set('state', state);
 
@@ -279,12 +283,23 @@ async function handleOwnerCallback(request, env, code) {
       return ownerResultPage(false, 'Google returned no access token (' + (tokens.error || 'unknown error') + ').');
     }
 
-    // Only the developer/owner account may become the Drive owner.
-    const uRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    });
-    const user = await uRes.json();
-    const email = (user.email || '').toLowerCase();
+    // Only the 5TB Drive owner account may become the Drive owner.
+    // Primary: userinfo API. Fallback: decode the id_token JWT (Google
+    // always returns one now that openid/email scopes are requested).
+    let email = '';
+    try {
+      const uRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      const user = await uRes.json();
+      email = (user.email || '').toLowerCase();
+    } catch (e) {}
+    if (!email && tokens.id_token) {
+      try {
+        const payload = JSON.parse(atob(tokens.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        email = (payload.email || '').toLowerCase();
+      } catch (e) {}
+    }
     if (email !== DRIVE_OWNER_EMAIL) {
       return ownerResultPage(false, 'Account ' + (email || 'unknown') + ' is not the Drive owner. Log in with the 5TB Drive account (drrohitkumar27@gmail.com). If Google shows the wrong account first, tap "Use another account" and pick drrohitkumar27@gmail.com.');
     }
