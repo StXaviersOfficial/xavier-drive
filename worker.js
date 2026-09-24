@@ -19,6 +19,8 @@
 // ============================================================
 
 const SCOPES = 'openid email profile';
+// Owner Drive token scope (full Drive access — matches the original token).
+const OWNER_SCOPES = 'https://www.googleapis.com/auth/drive';
 
 // —— Utilities ————————————————————————————————————
 
@@ -235,12 +237,90 @@ async function handleLogin(env, origin) {
   return new Response(null, { status: 302, headers });
 }
 
+// —— Owner Drive-token login (one-click fix for dead DRIVE_TOKEN_JSON) ————
+// The owner opens /owner-login in a browser logged into the school owner
+// Google account, authorizes, and the fresh token is stored in KV
+// (__owner_token__). Restricted to developer emails — anyone else is rejected.
+async function handleOwnerLogin(env, origin) {
+  const state = randomState();
+  const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  url.searchParams.set('client_id', env.GOOGLE_CLIENT_ID);
+  url.searchParams.set('redirect_uri', env.REDIRECT_URI);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('scope', OWNER_SCOPES);
+  url.searchParams.set('access_type', 'offline');
+  url.searchParams.set('prompt', 'consent');
+  url.searchParams.set('state', state);
+
+  const headers = new Headers({ Location: url.toString() });
+  headers.append('Set-Cookie', sessionCookie('xd_owner_state', state, 600));
+  return new Response(null, { status: 302, headers });
+}
+
+async function handleOwnerCallback(request, env, code) {
+  const FRONTEND = env.FRONTEND_URL || 'https://stxaviers.pages.dev';
+  if (!code) return ownerResultPage(false, 'No authorization code returned by Google.');
+  try {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: env.GOOGLE_CLIENT_ID,
+        client_secret: env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: env.REDIRECT_URI,
+        grant_type: 'authorization_code',
+      }),
+    });
+    const tokens = await tokenRes.json();
+    if (!tokens.access_token) {
+      return ownerResultPage(false, 'Google returned no access token (' + (tokens.error || 'unknown error') + ').');
+    }
+
+    // Only the developer/owner account may become the Drive owner.
+    const uRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    const user = await uRes.json();
+    const email = (user.email || '').toLowerCase();
+    if (!DEVELOPER_EMAILS.includes(email)) {
+      return ownerResultPage(false, 'Account ' + (email || 'unknown') + ' is not the owner. Log in with the school owner account (quackeditzofficial@gmail.com).');
+    }
+
+    // Store the fresh owner token in KV — permanent; getOwnerToken()
+    // refreshes it in place from now on.
+    const tok = {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expiry: Date.now() + (tokens.expires_in || 3600) * 1000,
+      owner: email,
+      stored: new Date().toISOString()
+    };
+    await env.KV_SESSIONS.put('__owner_token__', JSON.stringify(tok));
+
+    return ownerResultPage(true, 'Owner Drive token saved. The Files tab should work again. Also remember to push the OAuth consent screen to Production (Google Cloud Console) so refresh tokens stop expiring every 7 days.');
+  } catch (e) {
+    return ownerResultPage(false, 'Owner auth failed: ' + e.message);
+  }
+}
+
+function ownerResultPage(ok, message) {
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>XavierDrive \u2014 Owner Login</title><style>body{font-family:system-ui,-apple-system,sans-serif;background:#07080f;color:#fff;display:flex;min-height:100vh;margin:0;align-items:center;justify-content:center}.card{background:#111527;padding:32px;border-radius:16px;max-width:440px;text-align:center}h1{font-size:20px;margin:0 0 12px}p{font-size:14px;line-height:1.55;color:#c7cbe0}a{color:#7c9aff}</style></head><body><div class="card"><h1>${ok ? 'Owner token saved' : 'Owner login failed'}</h1><p>${message}</p><p><a href="https://stxaviers.pages.dev">Back to XavierDrive</a></p></div></body></html>`;
+  return new Response(html, { status: ok ? 200 : 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}
+
 async function handleCallback(request, env) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const cookies = parseCookies(request.headers.get('Cookie'));
   const FRONTEND = env.FRONTEND_URL || 'https://stxaviers.pages.dev';
+
+  // Owner Drive-token flow: state matches xd_owner_state instead of xd_state.
+  const ownerState = cookies['xd_owner_state'];
+  if (ownerState && state === ownerState) {
+    return handleOwnerCallback(request, env, code);
+  }
 
   if (!code || state !== cookies['xd_state']) {
     return Response.redirect(FRONTEND + '?auth=error', 302);
@@ -2356,6 +2436,7 @@ export default {
 
     // Existing routes
     if (path === '/login') return handleLogin(env, origin);
+    if (path === '/owner-login') return handleOwnerLogin(env, origin);
     if (path === '/callback') return handleCallback(request, env);
     if (path === '/me') return handleMe(request, env, origin);
     if (path === '/token') return handleToken(request, env, origin);
