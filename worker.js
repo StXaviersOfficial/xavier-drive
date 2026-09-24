@@ -2320,6 +2320,20 @@ async function handleLiveChatAction(request, env, origin) {
   } catch (e) { return json({ error: 'Firebase action failed: ' + e.message }, 500, origin); }
 }
 
+// —— Android app (Xavier's Drive) update manifest ——————————————————
+// Bump these when releasing a new APK — the app checks this on every launch.
+// apkUrl must point at the publicly-hosted APK on the Pages site.
+const APP_LATEST = {
+  versionCode: 1,
+  versionName: '1.0.0',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.0.0.apk',
+  notes: "Xavier's Drive v1.0.0 — first build: logo, name, update checker, blank page."
+};
+
+function handleAppVersion(origin) {
+  return json({ ok: true, ...APP_LATEST }, 200, origin);
+}
+
 // —— Main fetch handler ——————————————————————————
 
 export default {
@@ -2347,6 +2361,7 @@ export default {
     if (path === '/token') return handleToken(request, env, origin);
     if (path === '/logout') return handleLogout(request, env, origin);
     if (path === '/config') return handleConfig(env, origin);
+    if (path === '/api/app/version' && request.method === 'GET') return handleAppVersion(origin);
     if (path.startsWith('/drive')) return handleDrive(request, env, origin, path);
 
     // AI routes
