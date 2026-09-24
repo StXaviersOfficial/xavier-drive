@@ -124,6 +124,24 @@ function json(data, status = 200, origin = '') {
 
 // —— Drive token management ——————————————————————
 
+async function refreshOwnerToken(env, refreshToken) {
+  try {
+    const r = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: env.GOOGLE_CLIENT_ID,
+        client_secret: env.GOOGLE_CLIENT_SECRET,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+    return await r.json();
+  } catch (e) {
+    return { error: 'network_error', error_description: e.message };
+  }
+}
+
 async function getOwnerToken(env) {
   // Defensive: KV_SESSIONS binding may be missing on some deployments.
   // Fall back to reading DRIVE_TOKEN_JSON directly each time (slower but works).
@@ -141,18 +159,27 @@ async function getOwnerToken(env) {
 
   if (!tok.access_token || (tok.expiry && Date.now() > tok.expiry - 300000)) {
     if (!tok.refresh_token) throw new Error('No owner refresh token available. Set DRIVE_TOKEN_JSON secret with a JSON object containing refresh_token.');
-    const r = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: env.GOOGLE_CLIENT_ID,
-        client_secret: env.GOOGLE_CLIENT_SECRET,
-        refresh_token: tok.refresh_token,
-        grant_type: 'refresh_token',
-      }),
-    });
-    const fresh = await r.json();
-    if (!fresh.access_token) throw new Error('Owner token refresh failed: ' + JSON.stringify(fresh));
+    let fresh = await refreshOwnerToken(env, tok.refresh_token);
+
+    // Self-heal: if refresh failed but the token came from the KV cache, the
+    // cache may be stale (DRIVE_TOKEN_JSON secret was rotated). Purge the KV
+    // entry and retry once with the secret's refresh token instead.
+    if (!fresh.access_token && stored) {
+      try { if (kv && typeof kv.delete === 'function') await kv.delete('__owner_token__'); } catch (e) {}
+      const secTok = JSON.parse(env.DRIVE_TOKEN_JSON || '{}');
+      if (secTok.refresh_token && secTok.refresh_token !== tok.refresh_token) {
+        tok = secTok;
+        fresh = await refreshOwnerToken(env, tok.refresh_token);
+      }
+    }
+
+    if (!fresh.access_token) {
+      const detail = JSON.stringify(fresh);
+      if (fresh.error === 'invalid_grant') {
+        throw new Error('Google rejected the Drive owner refresh token (invalid_grant: token expired/revoked, or OAuth consent screen is in Testing mode which kills refresh tokens after 7 days). Fix: re-generate the token via Google OAuth Playground with the owner account, update the DRIVE_TOKEN_JSON secret, and set the OAuth consent screen to Production. Detail: ' + detail);
+      }
+      throw new Error('Owner token refresh failed: ' + detail);
+    }
     tok.access_token = fresh.access_token;
     tok.expiry = Date.now() + (fresh.expires_in || 3600) * 1000;
     if (kv && typeof kv.put === 'function') {
