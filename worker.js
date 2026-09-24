@@ -238,9 +238,10 @@ async function handleLogin(env, origin) {
 }
 
 // —— Owner Drive-token login (one-click fix for dead DRIVE_TOKEN_JSON) ————
-// The owner opens /owner-login in a browser logged into the school owner
-// Google account, authorizes, and the fresh token is stored in KV
-// (__owner_token__). Restricted to developer emails — anyone else is rejected.
+// The owner opens /owner-login in a browser logged into the 5TB Drive owner
+// Google account (drrohitkumar27@gmail.com), authorizes, and the fresh token
+// is stored in KV (__owner_token__). Restricted to the Drive owner email —
+// anyone else is rejected. KV token takes priority over DRIVE_TOKEN_JSON secret.
 async function handleOwnerLogin(env, origin) {
   const state = randomState();
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
@@ -250,6 +251,7 @@ async function handleOwnerLogin(env, origin) {
   url.searchParams.set('scope', OWNER_SCOPES);
   url.searchParams.set('access_type', 'offline');
   url.searchParams.set('prompt', 'consent');
+  url.searchParams.set('login_hint', DRIVE_OWNER_EMAIL);
   url.searchParams.set('state', state);
 
   const headers = new Headers({ Location: url.toString() });
@@ -283,8 +285,8 @@ async function handleOwnerCallback(request, env, code) {
     });
     const user = await uRes.json();
     const email = (user.email || '').toLowerCase();
-    if (!DEVELOPER_EMAILS.includes(email)) {
-      return ownerResultPage(false, 'Account ' + (email || 'unknown') + ' is not the owner. Log in with the school owner account (quackeditzofficial@gmail.com).');
+    if (email !== DRIVE_OWNER_EMAIL) {
+      return ownerResultPage(false, 'Account ' + (email || 'unknown') + ' is not the Drive owner. Log in with the 5TB Drive account (drrohitkumar27@gmail.com). If Google shows the wrong account first, tap "Use another account" and pick drrohitkumar27@gmail.com.');
     }
 
     // Store the fresh owner token in KV — permanent; getOwnerToken()
@@ -298,7 +300,7 @@ async function handleOwnerCallback(request, env, code) {
     };
     await env.KV_SESSIONS.put('__owner_token__', JSON.stringify(tok));
 
-    return ownerResultPage(true, 'Owner Drive token saved. The Files tab should work again. Also remember to push the OAuth consent screen to Production (Google Cloud Console) so refresh tokens stop expiring every 7 days.');
+    return ownerResultPage(true, 'Owner Drive token saved for drrohitkumar27@gmail.com (5TB). The Files tab should work again — folder structure auto-creates on first use. Also remember to push the OAuth consent screen to Production (Google Cloud Console, project stxaviersapp) so refresh tokens stop expiring every 7 days.');
   } catch (e) {
     return ownerResultPage(false, 'Owner auth failed: ' + e.message);
   }
@@ -1226,6 +1228,10 @@ async function getYouTubeToken(env) {
 // Hardcoded role emails — these ALWAYS take precedence
 const DEVELOPER_EMAILS = ['quackeditzofficial@gmail.com'];
 const HARDCODED_ADMIN_EMAILS = ['quackeditzofficial@gmail.com', 'drrohitkumar27@gmail.com'];
+// The 5TB Google Workspace account that hosts the XavierDrive files.
+// Owner-login (/owner-login) only accepts this account; its token lands in KV
+// __owner_token__ and takes priority over the DRIVE_TOKEN_JSON secret.
+const DRIVE_OWNER_EMAIL = 'drrohitkumar27@gmail.com';
 
 async function verifyRole(env, email) {
   if (!email) return { role: 'student', isAdmin: false, isDeveloper: false };
