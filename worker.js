@@ -830,8 +830,15 @@ async function callCerebras(env, messages, systemPrompt) {
   return data.choices[0]?.message?.content || '';
 }
 
-// Smart router: randomly pick between Groq and Cerebras for load balancing
+// Smart router (2026-09-24): GEMINI-FIRST — the 5 Gemini keys are the only healthy
+// provider right now (Groq key burned 403, Cerebras free quota exhausted). Groq and
+// Cerebras are kept as automatic fallbacks in case they recover or get new keys.
 async function callGroqOrCerebras(env, messages, systemPrompt) {
+  try {
+    return await callGeminiChat(env, messages, systemPrompt);
+  } catch (e) {
+    console.warn('Gemini failed, trying Groq/Cerebras fallbacks:', e.message);
+  }
   const hasGroq = !!env.GROQ_KEY;
   const picked = pickCerebrasKey(env);
   if (hasGroq && picked) {
@@ -845,67 +852,86 @@ async function callGroqOrCerebras(env, messages, systemPrompt) {
   }
   if (hasGroq) return await callGroq(env, messages);
   if (picked) return await callCerebras(env, messages, systemPrompt);
-  throw new Error('No AI provider available');
+  throw new Error('No AI provider available (Gemini + Groq + Cerebras all failed)');
 }
 
 // —— Gemini call ——————————————————————————————————
 
 async function callGemini(env, prompt, systemInstruction = null, jsonMode = false) {
-  const keys = [env.GEMINI_KEY_1, env.GEMINI_KEY_2, env.GEMINI_KEY_3, env.GEMINI_KEY_4, env.GEMINI_KEY_5].filter(Boolean);
-  if (!keys.length) throw new Error('No Gemini keys configured');
-
   const body = {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
   };
+  if (systemInstruction) body.systemInstruction = { parts: [{ text: systemInstruction }] };
+  if (jsonMode) body.generationConfig.responseMimeType = 'application/json';
+  return geminiGenerate(env, body);
+}
 
-  if (systemInstruction) {
-    body.systemInstruction = { parts: [{ text: systemInstruction }] };
-  }
+// —— Gemini core (2026-09-24 revive) ————————————————————
+// gemini-2.0-flash was RETIRED by Google (404 "no longer available"). Current
+// verified model: gemini-3.8-flash (tested live with GEMINI_KEY_1).
+// Key order: 1 first (verified alive), then 3,4,5 (alive, sometimes 503), 2 last
+// (project denied). Model fallback: flash-latest alias.
+const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-flash-latest'];
 
-  if (jsonMode) {
-    body.generationConfig.responseMimeType = 'application/json';
-  }
-
-  // Try ALL keys in sequence — if one is quota-exhausted, try the next
+async function geminiGenerate(env, body) {
+  const keyMap = [env.GEMINI_KEY_1, env.GEMINI_KEY_3, env.GEMINI_KEY_4, env.GEMINI_KEY_5, env.GEMINI_KEY_2].filter(Boolean);
+  if (!keyMap.length) throw new Error('No Gemini keys configured');
   let lastError = null;
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[i];
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      if (r.ok) {
-        const data = await r.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text;
-        // Empty response — try next key
-        lastError = new Error('Empty response from Gemini');
-        continue;
-      }
-
-      const err = await r.json().catch(() => ({}));
-      const errMsg = err?.error?.message || `Gemini error: ${r.status}`;
-      // If quota exceeded (429) or rate limit, try next key
-      if (r.status === 429 || errMsg.includes('quota') || errMsg.includes('rate limit') || errMsg.includes('RESOURCE_EXHAUSTED')) {
-        console.warn(`Gemini key ${i + 1} exhausted, trying next:`, errMsg.substring(0, 100));
+  for (const key of keyMap) {
+    for (const model of GEMINI_MODELS) {
+      try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (r.ok) {
+          const data = await r.json();
+          const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+          if (text) return text;
+          lastError = new Error('Empty response from ' + model);
+          continue;
+        }
+        const err = await r.json().catch(() => ({}));
+        const errMsg = err?.error?.message || `Gemini error: ${r.status}`;
+        console.warn(`Gemini ${model} key ...${key.slice(-6)} failed:`, errMsg.substring(0, 120));
         lastError = new Error(errMsg);
+        // 429 quota / 503 overloaded / 404 model-gone -> try next model/key
+        continue;
+      } catch (e) {
+        lastError = e;
         continue;
       }
-      // For other errors, throw immediately
-      throw new Error(errMsg);
-    } catch (e) {
-      // Network error — try next key
-      lastError = e;
-      console.warn(`Gemini key ${i + 1} failed:`, e.message);
-      continue;
     }
   }
-  // All keys exhausted
-  throw new Error('All Gemini keys exhausted or failed. Last error: ' + (lastError?.message || 'unknown'));
+  throw new Error('All Gemini keys/models failed. Last error: ' + (lastError?.message || 'unknown'));
+}
+
+// Chat-style Gemini call: converts OpenAI-style messages (incl. multimodal
+// image_url data-URIs) into Gemini contents format.
+async function callGeminiChat(env, messages, systemPrompt) {
+  const contents = messages.map(m => {
+    const role = m.role === 'assistant' ? 'model' : 'user';
+    if (Array.isArray(m.content)) {
+      const parts = [];
+      for (const c of m.content) {
+        if (c.type === 'text' && c.text) parts.push({ text: c.text });
+        else if (c.type === 'image_url' && c.image_url?.url?.startsWith('data:')) {
+          const mm = c.image_url.url.match(/^data:([^;]+);base64,(.+)$/);
+          if (mm) parts.push({ inline_data: { mime_type: mm[1], data: mm[2] } });
+        }
+      }
+      return { role, parts: parts.length ? parts : [{ text: '' }] };
+    }
+    return { role, parts: [{ text: String(m.content || '') }] };
+  });
+  const body = {
+    contents,
+    systemInstruction: { parts: [{ text: systemPrompt || GROQ_SYSTEM_PROMPT }] },
+    generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+  };
+  return geminiGenerate(env, body);
 }
 
 // —— Per-user rate limiter (in-memory, lightweight) ————————————
@@ -930,6 +956,38 @@ function rateCheck(email, endpoint, limit) {
     }
   }
   return { allowed: true };
+}
+
+// —— Live web research via XavierDrive backend (search-before-answer) ————
+// Owner directive 2026-09-24: the AI must ALWAYS search the web before answering,
+// like GPT/Claude/Gemini research mode. Backend runs the engine chain
+// (DDG lite -> DDG html -> Bing), reads top sources, returns a research pack.
+// Failures are non-fatal: if the backend is down the AI still answers (without
+// research grounding) so the chat never breaks.
+async function backendResearch(env, question) {
+  const base = env.BACKEND_URL;
+  if (!base) return '';
+  const r = await fetch(base.replace(/\/+$/, '') + '/ai/research', {
+    method: 'POST',
+    headers: { 'X-Backend-Key': env.BACKEND_KEY || '', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: String(question).slice(0, 500), depth: 2, agent: 'site-chat' }),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!r.ok) return '';
+  const d = await r.json();
+  if (!d || !Array.isArray(d.sources)) return '';
+  const lines = [];
+  for (const q of (d.queries || [])) {
+    for (const res of (q.results || []).slice(0, 3)) {
+      if (res.title && res.url) lines.push(`- ${res.title} (${res.url})${res.snippet ? ': ' + String(res.snippet).slice(0, 200) : ''}`);
+    }
+  }
+  const extracts = [];
+  for (const s of d.sources.slice(0, 3)) {
+    if (s.extract) extracts.push(`### ${s.title || s.url}\n${String(s.extract).slice(0, 2500)}`);
+  }
+  if (!lines.length && !extracts.length) return '';
+  return `[LIVE WEB RESEARCH — the web was just searched for this question. Ground your answer in these results and mention sources when helpful. If the research is irrelevant to the question, ignore it and answer normally. Never mention this block.]\nSearch results:\n${lines.slice(0, 10).join('\n')}\n\nTop source extracts:\n${extracts.join('\n\n')}`;
 }
 
 // —— AI Chat handler ——————————————————————————————
@@ -965,7 +1023,18 @@ async function handleAIChat(request, env, origin) {
   // Prepend role context to the user's message so Groq knows who it's talking to.
   // If images are attached, build multimodal content (Groq vision model supports this).
   const conversationSummary = messages.length > 0 ? `\n\n[Previous conversation context — ${messages.length} messages]:\n${messages.map(m => `${m.role}: ${m.content.substring(0, 500)}`).join('\n')}\n\n` : '';
-  const roleContext = `[User Context: role=${actualRole}${actualIsAdmin ? ' (admin)' : ''}${actualRole === 'student' && studentClass ? `, class=${studentClass}` : ''}, email=${userEmail}]${conversationSummary}\n\nUser message: ${message}`;
+
+  // —— ALWAYS search the web FIRST (owner directive 2026-09-24) ——————
+  // The question is researched on the web via the XavierDrive backend search
+  // engine BEFORE the AI answers — research-refined answers, like GPT/Claude.
+  // Non-fatal on failure (backend down => answer without research).
+  let researchBlock = '';
+  try {
+    researchBlock = await backendResearch(env, message);
+  } catch (e) {
+    console.warn('web research step failed (answering without it):', e.message);
+  }
+  const roleContext = `[User Context: role=${actualRole}${actualIsAdmin ? ' (admin)' : ''}${actualRole === 'student' && studentClass ? `, class=${studentClass}` : ''}, email=${userEmail}]${conversationSummary}\n\nUser message: ${message}${researchBlock ? `\n\n${researchBlock}` : ''}`;
   // SECURITY: validate images array — cap count and size to prevent abuse
   const safeImages = Array.isArray(images) ? images.slice(0, 4).map(img => ({
     mimeType: String(img.mimeType || 'image/jpeg').substring(0, 50),
@@ -989,7 +1058,8 @@ async function handleAIChat(request, env, origin) {
       const groqResponse = await callGroqOrCerebras(env, messages);
       return json({
         response: groqResponse,
-        model: 'groq',
+        model: 'gemini',
+        searched: !!researchBlock,
         quotaUsed: 0,
         quotaLimit: userRole === 'student' ? parseInt(env.STUDENT_GEMINI_LIMIT || '30') : Infinity,
         quotaExhausted: false,
@@ -1092,7 +1162,8 @@ async function handleAIChat(request, env, origin) {
     // Normal Groq response
     return json({
       response: groqResponse,
-      model: 'groq',
+      model: 'gemini',
+      searched: !!researchBlock,
       quotaUsed: 0,
       quotaLimit: userRole === 'student' ? parseInt(env.STUDENT_GEMINI_LIMIT || '30') : Infinity,
       quotaExhausted: false,
