@@ -121,9 +121,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/chip_bg"
-                    android:paddingLeft="14dp" android:paddingRight="14dp"
-                    android:paddingTop="8dp" android:paddingBottom="8dp"
-                    android:textSize="12sp"
+                    android:paddingLeft="12dp" android:paddingRight="12dp"
+                    android:paddingTop="7dp" android:paddingBottom="7dp"
+                    android:textSize="11sp"
                     android:textStyle="bold"
                     android:textColor="@color/login_chip_ink"
                     android:text="@string/login_chip_ai" />
@@ -132,11 +132,11 @@
                     android:id="@+id/chip2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginLeft="10dp"
+                    android:layout_marginLeft="8dp"
                     android:background="@drawable/chip_bg"
-                    android:paddingLeft="14dp" android:paddingRight="14dp"
-                    android:paddingTop="8dp" android:paddingBottom="8dp"
-                    android:textSize="12sp"
+                    android:paddingLeft="12dp" android:paddingRight="12dp"
+                    android:paddingTop="7dp" android:paddingBottom="7dp"
+                    android:textSize="11sp"
                     android:textStyle="bold"
                     android:textColor="@color/login_chip_ink"
                     android:text="@string/login_chip_drive" />
@@ -145,11 +145,11 @@
                     android:id="@+id/chip3"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginLeft="10dp"
+                    android:layout_marginLeft="8dp"
                     android:background="@drawable/chip_bg"
-                    android:paddingLeft="14dp" android:paddingRight="14dp"
-                    android:paddingTop="8dp" android:paddingBottom="8dp"
-                    android:textSize="12sp"
+                    android:paddingLeft="12dp" android:paddingRight="12dp"
+                    android:paddingTop="7dp" android:paddingBottom="7dp"
+                    android:textSize="11sp"
                     android:textStyle="bold"
                     android:textColor="@color/login_chip_ink"
                     android:text="@string/login_chip_live" />
@@ -192,10 +192,8 @@
                     <FrameLayout
                         android:id="@+id/gbtn_wrap"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="22dp"
-                        android:clipChildren="false"
-                        android:clipToPadding="false">
+                        android:layout_height="54dp"
+                        android:layout_marginTop="22dp">
 
                         <Button
                             android:id="@+id/gbtn"
