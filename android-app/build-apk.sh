@@ -1,5 +1,5 @@
 #!/bin/bash
-# build-apk.sh — build Xavier's Drive v2.0.0 APK WITHOUT Gradle.
+# build-apk.sh — build Xavier's Drive v1.0.1 APK WITHOUT Gradle.
 # Toolchain: aapt2 + javac + d8 + zipalign + apksigner (build-tools 34, JDK17).
 set -e
 
@@ -51,9 +51,9 @@ $BT/apksigner sign \
   --ks "$KS" --ks-pass "pass:$KSPASS" \
   --ks-key-alias stxaviers-upload \
   --key-pass "pass:$KSPASS" \
-  --out "$PROJ/xavierdrive2.0.0.apk" \
+  --out "$PROJ/xavierdrive1.0.1.apk" \
   aligned.apk
 
-$BT/apksigner verify --print-certs "$PROJ/xavierdrive2.0.0.apk" | head -4
-ls -la "$PROJ/xavierdrive2.0.0.apk"
+$BT/apksigner verify --print-certs "$PROJ/xavierdrive1.0.1.apk" | head -4
+ls -la "$PROJ/xavierdrive1.0.1.apk"
 echo "APK BUILD DONE"
