@@ -85,6 +85,12 @@ public class StarfieldView extends View {
         }
     }
 
+    public void setPointer(float rawX, float rawY) {
+        // feed parallax from an external view (the ScrollView) in screen coords
+        px = Math.max(0f, Math.min(1f, rawX / Math.max(1f, getWidth())));
+        py = Math.max(0f, Math.min(1f, rawY / Math.max(1f, getHeight())));
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent e) {
         if (e.getAction() == MotionEvent.ACTION_MOVE
