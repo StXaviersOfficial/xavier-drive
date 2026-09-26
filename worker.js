@@ -653,7 +653,7 @@ async function incrementQuota(env, email) {
 
 // —— Groq call ———————————————————————————————————
 
-const GROQ_SYSTEM_PROMPT = `You are Xavier's Drive AI — the official AI assistant of St. Xavier's School, embedded in the school portal. You are an AGENTIC assistant: for questions that need live web knowledge the app runs a web search BEFORE you answer and hands you the results, and it can render charts and downloadable files from your output.
+const GROQ_SYSTEM_PROMPT = `You are XavierDrive AI — the official AI assistant of St. Xavier's School, embedded in the school portal. You are an AGENTIC assistant: for questions that need live web knowledge the app runs a web search BEFORE you answer and hands you the results, and it can render charts and downloadable files from your output.
 
 WHO YOU TALK TO
 The user's role and class are given in a context block. Tailor every reply:
@@ -2947,14 +2947,14 @@ async function handleLiveChatAction(request, env, origin) {
   } catch (e) { return json({ error: 'Firebase action failed: ' + e.message }, 500, origin); }
 }
 
-// —— Android app (Xavier's Drive) update manifest ——————————————————
+// —— Android app (XavierDrive) update manifest ——————————————————
 // Bump these when releasing a new APK — the app checks this on every launch.
 // apkUrl must point at the publicly-hosted APK on the Pages site.
 const APP_LATEST = {
-  versionCode: 3,
-  versionName: '1.0.1',
-  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.0.1.apk',
-  notes: "Xavier's Drive v1.0.1 — new XD emblem branding everywhere, in-app updater with live progress, speed and one-tap install, all-new animated login page (dark + light, auto-themed), smoother portal."
+  versionCode: 4,
+  versionName: '1.0.2',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.0.2.apk',
+  notes: "XavierDrive v1.0.2 — real Google sign-in inside the app (one tap, straight into the portal), blank-page fix with auto-recovery, XavierDrive branding everywhere."
 };
 
 function handleAppVersion(origin) {
