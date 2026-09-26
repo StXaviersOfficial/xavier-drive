@@ -8,86 +8,316 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <LinearLayout
-        android:gravity="center"
-        android:layout_gravity="center"
-        android:orientation="vertical"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none"
+        android:overScrollMode="never">
 
-        <FrameLayout
-            android:layout_width="240dp"
-            android:layout_height="240dp">
-
-            <View
-                android:id="@+id/logo_glow"
-                android:layout_width="210dp"
-                android:layout_height="210dp"
-                android:layout_gravity="center"
-                android:background="@drawable/splash_glow" />
-
-            <View
-                android:id="@+id/ring1"
-                android:layout_width="196dp"
-                android:layout_height="196dp"
-                android:layout_gravity="center"
-                android:background="@drawable/ring1" />
-
-            <View
-                android:id="@+id/ring2"
-                android:layout_width="224dp"
-                android:layout_height="224dp"
-                android:layout_gravity="center"
-                android:background="@drawable/ring2" />
-
-            <ImageView
-                android:id="@+id/splash_logo"
-                android:layout_width="158dp"
-                android:layout_height="158dp"
-                android:layout_gravity="center"
-                android:src="@drawable/splash_logo"
-                android:contentDescription="@string/app_name" />
-        </FrameLayout>
-
-        <TextView
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:textColor="@color/ink"
-            android:id="@+id/splash_title"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="@string/app_name"
-            android:letterSpacing="0.04"
-            android:shadowColor="#804f8ef7"
-            android:shadowDx="0" android:shadowDy="0" android:shadowRadius="18" />
+            android:minHeight="420dp"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingTop="48dp"
+            android:paddingBottom="64dp">
 
-        <TextView
-            android:textSize="13sp"
-            android:textColor="@color/muted"
-            android:id="@+id/splash_sub"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:letterSpacing="0.08"
-            android:text="ST. XAVIER'S SCHOOL · JAIPUR" />
+            <FrameLayout
+                android:layout_width="240dp"
+                android:layout_height="240dp">
 
-        <ProgressBar
-            android:layout_width="150dp"
-            android:layout_height="3dp"
-            android:layout_marginTop="34dp"
-            android:indeterminate="true"
-            android:indeterminateTint="@color/accent"
-            style="?android:attr/progressBarStyleHorizontal" />
+                <View
+                    android:id="@+id/logo_glow"
+                    android:layout_width="210dp"
+                    android:layout_height="210dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/splash_glow" />
 
-        <TextView
-            android:textSize="12sp"
-            android:textColor="@color/muted"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="@string/checking_updates" />
-    </LinearLayout>
+                <View
+                    android:id="@+id/ring1"
+                    android:layout_width="196dp"
+                    android:layout_height="196dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/ring1" />
+
+                <View
+                    android:id="@+id/ring2"
+                    android:layout_width="224dp"
+                    android:layout_height="224dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/ring2" />
+
+                <ImageView
+                    android:id="@+id/splash_logo"
+                    android:layout_width="158dp"
+                    android:layout_height="158dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/splash_logo"
+                    android:contentDescription="@string/app_name" />
+            </FrameLayout>
+
+            <TextView
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:textColor="@color/ink"
+                android:id="@+id/splash_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/app_name"
+                android:letterSpacing="0.04"
+                android:shadowColor="#804f8ef7"
+                android:shadowDx="0" android:shadowDy="0" android:shadowRadius="18" />
+
+            <TextView
+                android:textSize="13sp"
+                android:textColor="@color/muted"
+                android:id="@+id/splash_sub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:letterSpacing="0.08"
+                android:text="ST. XAVIER'S SCHOOL · JAIPUR" />
+
+            <!-- ══ checking (default state) ══ -->
+            <LinearLayout
+                android:id="@+id/checking_box"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:layout_marginTop="34dp">
+
+                <ProgressBar
+                    android:layout_width="150dp"
+                    android:layout_height="3dp"
+                    android:indeterminate="true"
+                    android:indeterminateTint="@color/accent"
+                    style="?android:attr/progressBarStyleHorizontal" />
+
+                <TextView
+                    android:textSize="12sp"
+                    android:textColor="@color/muted"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="@string/checking_updates" />
+            </LinearLayout>
+
+            <!-- ══ update panel (same interface — replaces the spinner) ══ -->
+            <LinearLayout
+                android:id="@+id/update_box"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:layout_marginTop="30dp"
+                android:layout_marginLeft="26dp"
+                android:layout_marginRight="26dp"
+                android:padding="20dp"
+                android:background="@drawable/update_panel_bg"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/update_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/ink"
+                    android:text="@string/update_available" />
+
+                <TextView
+                    android:id="@+id/update_version_size"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textSize="13sp"
+                    android:textColor="@color/accent"
+                    android:text="v—" />
+
+                <TextView
+                    android:id="@+id/update_notes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:textSize="12sp"
+                    android:lineSpacingExtra="3dp"
+                    android:gravity="center"
+                    android:maxLines="5"
+                    android:ellipsize="end"
+                    android:textColor="@color/muted" />
+
+                <!-- state A: download offer -->
+                <Button
+                    android:id="@+id/btn_download"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="18dp"
+                    android:background="@drawable/cta_btn_bg"
+                    android:stateListAnimator="@null"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="false"
+                    android:textColor="@color/cta_ink"
+                    android:text="@string/download_update" />
+
+                <!-- state B: live progress -->
+                <LinearLayout
+                    android:id="@+id/progress_box"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="18dp"
+                    android:visibility="gone">
+
+                    <ProgressBar
+                        android:id="@+id/update_progress"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="10dp"
+                        android:max="100"
+                        android:progress="0"
+                        android:progressDrawable="@drawable/update_progress"
+                        android:indeterminate="false" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="10dp">
+
+                        <TextView
+                            android:id="@+id/progress_percent"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/ink"
+                            android:text="0%" />
+
+                        <TextView
+                            android:id="@+id/progress_speed"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/muted"
+                            android:text="— MB/s" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp">
+
+                        <TextView
+                            android:id="@+id/progress_bytes"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:textSize="12sp"
+                            android:textColor="@color/muted"
+                            android:text="0.0 MB / — MB" />
+
+                        <TextView
+                            android:id="@+id/progress_eta"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="12sp"
+                            android:textColor="@color/muted"
+                            android:text="" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/btn_cancel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="12dp"
+                        android:padding="8dp"
+                        android:background="@drawable/text_btn_bg"
+                        android:textSize="12sp"
+                        android:textColor="@color/muted"
+                        android:text="@string/cancel" />
+                </LinearLayout>
+
+                <!-- state C: downloaded, ready to install -->
+                <LinearLayout
+                    android:id="@+id/install_box"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="18dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/install_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:textColor="@color/accent"
+                        android:text="@string/downloaded_ready" />
+
+                    <TextView
+                        android:id="@+id/perm_hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textSize="11sp"
+                        android:lineSpacingExtra="2dp"
+                        android:gravity="center"
+                        android:textColor="@color/muted"
+                        android:text="@string/install_perms_hint"
+                        android:visibility="gone" />
+
+                    <Button
+                        android:id="@+id/btn_install"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/cta_btn_bg"
+                        android:stateListAnimator="@null"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="false"
+                        android:textColor="@color/cta_ink"
+                        android:text="@string/install_update" />
+                </LinearLayout>
+
+                <!-- error line -->
+                <TextView
+                    android:id="@+id/update_error"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:textColor="@color/accent3"
+                    android:visibility="gone"
+                    android:text="@string/download_failed" />
+
+                <!-- later (always available) -->
+                <TextView
+                    android:id="@+id/btn_later"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:padding="8dp"
+                    android:background="@drawable/text_btn_bg"
+                    android:textSize="13sp"
+                    android:textColor="@color/muted"
+                    android:text="@string/later" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
 
     <TextView
         android:textSize="11sp"
