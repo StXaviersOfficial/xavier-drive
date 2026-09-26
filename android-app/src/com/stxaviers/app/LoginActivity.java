@@ -413,7 +413,7 @@ public class LoginActivity extends Activity {
                         // would hit the same network; stay and let them retry.
                         runOnUiThread(() -> android.widget.Toast.makeText(
                                 LoginActivity.this,
-                                R.string.auth_offline,
+                                R.string.mobile_server_unreachable,
                                 android.widget.Toast.LENGTH_LONG).show());
                     }
                 });

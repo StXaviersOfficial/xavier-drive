@@ -48,4 +48,5 @@
     <string name="auth_cancelled">Sign-in was cancelled. Please try again.</string>
     <string name="auth_verify_failed">Couldn\'t verify your account. Please try again.</string>
     <string name="auth_offline">Couldn\'t reach Google. Check your connection and try again.</string>
+    <string name="mobile_server_unreachable">Couldn\'t reach the school server — check your connection and try again.</string>
 </resources>
