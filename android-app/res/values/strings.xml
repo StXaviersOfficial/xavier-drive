@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Xavier\'s Drive</string>
+    <string name="app_name">XavierDrive</string>
     <string name="checking_updates">Checking for updates…</string>
     <string name="update_available">Update available</string>
-    <string name="update_message">Xavier\'s Drive %s is ready with a smoother experience. Update now?</string>
+    <string name="update_message">XavierDrive %s is ready with a smoother experience. Update now?</string>
     <string name="download">Download</string>
     <string name="download_update">Download Update</string>
     <string name="not_now">Not now</string>
@@ -16,26 +16,36 @@
     <string name="download_failed">Download failed. Check your connection and try again.</string>
     <string name="install_failed">Installation was cancelled or failed. You can try again.</string>
     <string name="update_installed">Update installed — launching…</string>
-    <string name="version_label">v1.0.1 · St. Xavier\'s School, Jaipur</string>
+    <string name="version_label">v1.0.2 · St. Xavier\'s School, Jaipur</string>
     <string name="offline_title">You\'re offline</string>
     <string name="offline_msg">Check your internet connection and try again.</string>
     <string name="retry">Retry</string>
     <string name="exit_hint">Press back again to exit</string>
 
     <!-- login -->
-    <string name="login_title_1">Xavier\'s</string>
-    <string name="login_title_2">Drive</string>
+    <string name="login_title_1">XavierDrive</string>
+    <string name="login_title_2"></string>
     <string name="login_sub">St. Xavier\'s School, Jaipur · Official Portal</string>
     <string name="login_welcome">Welcome back</string>
     <string name="login_hint">Sign in with your school Google account.\nYour role is assigned automatically.</string>
     <string name="login_google">Continue with Google</string>
     <string name="login_note">By signing in, you agree to our Terms of Service and Privacy Policy.</string>
-    <string name="login_continue">Continue to app →</string>
-    <string name="login_coming_title">Google Sign-In — coming soon</string>
-    <string name="login_coming_msg">The all-new login design is live. Google sign-in gets wired in the next update — until then, jump straight into the portal.</string>
     <string name="login_chip_ai">AI Assistant</string>
     <string name="login_chip_drive">School Drive</string>
     <string name="login_chip_live">Live Classes</string>
     <string name="close">Close</string>
-    <string name="continue_to_app">Continue to app</string>
+
+    <!-- google sign-in (AuthActivity) -->
+    <string name="auth_status_connecting">Connecting to Google…</string>
+    <string name="auth_status_wait">Waiting for you to sign in…</string>
+    <string name="auth_status_verify">Verifying your account…</string>
+    <string name="auth_error_title">Sign-in didn\'t finish</string>
+    <string name="auth_retry">Try again</string>
+    <string name="auth_back">Back to login</string>
+    <string name="auth_signed_in">Signed in</string>
+    <string name="auth_welcome">Welcome, %s</string>
+    <string name="auth_timeout">Google sign-in timed out. Check your connection and try again.</string>
+    <string name="auth_cancelled">Sign-in was cancelled. Please try again.</string>
+    <string name="auth_verify_failed">Couldn\'t verify your account. Please try again.</string>
+    <string name="auth_offline">Couldn\'t reach Google. Check your connection and try again.</string>
 </resources>
