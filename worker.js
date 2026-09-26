@@ -7,13 +7,15 @@
 //    GOOGLE_CLIENT_SECRET    — OAuth 2.0 client secret
 //    REDIRECT_URI            — https://stxaviers-auth.quackeditzofficial.workers.dev/callback
 //    FRONTEND_URL            — https://stxaviers.pages.dev
-//    GROQ_KEY                — Groq API key
+//    GROQ_KEYS_JSON          — JSON array of Groq API keys
 //    SESSION_SECRET          — random string for signing session cookies
 //    DRIVE_TOKEN_JSON        — JSON of owner's Drive token
 //    KV_SESSIONS             — KV namespace binding
 //
 //  NEW (add these as Secrets):
-//    GEMINI_KEY_1..5         — 5 Gemini API keys (rotated)
+//    OPENROUTER_KEYS_JSON    — JSON array of OpenRouter keys (free models)
+//    CF_AI_KEYS_JSON         — JSON [{"token":"cfut_...","account":"<id>"}] Workers AI
+//    GEMINI_KEYS_JSON        — JSON array of Gemini API keys
 //    FIREBASE_DB_URL         — https://stxaviers-official-default-rtdb.firebaseio.com
 //    STUDENT_GEMINI_LIMIT    — "30" (text variable)
 // ============================================================
@@ -576,7 +578,7 @@ async function handleDrive(request, env, origin, path) {
 // —— Gemini key rotation ——————————————————————————
 
 function getGeminiKey(env) {
-  const keys = [env.GEMINI_KEY_1, env.GEMINI_KEY_2, env.GEMINI_KEY_3, env.GEMINI_KEY_4, env.GEMINI_KEY_5].filter(Boolean);
+  const keys = getJsonList(env, 'GEMINI_KEYS_JSON');
   if (!keys.length) throw new Error('No Gemini keys configured');
   return keys[Math.floor(Math.random() * keys.length)];
 }
@@ -685,114 +687,221 @@ Never share: admin passwords, API keys, worker/Firebase/backend URLs, ways to by
 FORMATTING
 **bold** key terms, ## section headings, bullet and numbered lists, \`inline code\`, code blocks with language tags, > for notes, tables for comparisons. Be concise but complete. Simple English (students are in Classes 1-12).`;
 
-async function callGroq(env, messages, systemPrompt) {
-  const groqKey = env.GROQ_KEY;
-  if (!groqKey) throw new Error('No Groq key configured');
-
-  // Detect multimodal content (image attachments) → switch to vision model
-  const hasImages = messages.some(m => Array.isArray(m.content));
-  const model = hasImages ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'llama-3.3-70b-versatile';
-
-  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${groqKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt || GROQ_SYSTEM_PROMPT },
-        ...messages,
-      ],
-      temperature: 0.7,
-      max_tokens: 4096,
-    }),
-  });
-
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Groq error: ${r.status}`);
-  }
-
-  const data = await r.json();
-  return data.choices[0]?.message?.content || '';
-}
-
 // ═══════════════════════════════════════════════════════
-// CEREBRAS API — 10 keys stored as Cloudflare secret
-// Used alongside Groq for load balancing
+// MULTI-PROVIDER AI LAYER (2026-09-26 key batch, all verified live)
+// Secrets (JSON arrays — keys NEVER leave Cloudflare):
+//   GROQ_KEYS_JSON        ["gsk_...", x5]        30 RPM / 1k RPD / 8k TPM / 200k TPD per key
+//   OPENROUTER_KEYS_JSON  ["sk-or-v1-...", x5]   50 free-model requests/day per key
+//   CF_AI_KEYS_JSON       [{token, account}]     10k neurons/day per account (00:00 UTC reset)
+//   GEMINI_KEYS_JSON      ["AQ...", x5]          ~10 RPM per key (separate projects)
+// Provider order (owner directive 2026-09-26): GROQ -> OPENROUTER ->
+// CF WORKERS AI -> GEMINI (backup). Image messages route GEMINI-first
+// (multimodal). Per-key cooldowns (429 -> short, 401/403 -> 24h, daily
+// caps -> UTC midnight) + 10-min per-provider circuit breaker.
 // ═══════════════════════════════════════════════════════
 
-function getCerebrasKeys(env) {
-  try {
-    if (env.CEREBRAS_KEYS_JSON) return JSON.parse(env.CEREBRAS_KEYS_JSON);
-  } catch (e) { console.warn('CEREBRAS_KEYS_JSON parse error:', e.message); }
-  return [];
+function getJsonList(env, name) {
+  try { const v = JSON.parse(env[name] || '[]'); return Array.isArray(v) ? v.filter(Boolean) : []; } catch (e) { return []; }
 }
 
-const _cerebrasBuckets = new Map();
-const CEREBRAS_RATE_WINDOW_MS = 60_000;
-const CEREBRAS_RATE_LIMIT = 25;
-
-function cerebrasRateCheck(keyIdx) {
-  const key = 'cerebras_' + keyIdx;
-  const now = Date.now();
-  let arr = _cerebrasBuckets.get(key) || [];
-  arr = arr.filter(ts => now - ts < CEREBRAS_RATE_WINDOW_MS);
-  if (arr.length >= CEREBRAS_RATE_LIMIT) return false;
-  arr.push(now);
-  _cerebrasBuckets.set(key, arr);
-  return true;
+const _keyCooldowns = new Map();                     // 'provider#idx' -> retry-after ts
+function keyCooling(id) { return (_keyCooldowns.get(id) || 0) > Date.now(); }
+function markKeyDown(id, ms) { _keyCooldowns.set(id, Date.now() + ms); }
+function markKeyUp(id) { _keyCooldowns.delete(id); }
+function msUntilUtcMidnight() {
+  const now = new Date();
+  const mid = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0);
+  return mid - now.getTime();
+}
+function flattenToText(messages) {
+  return messages.map(m => ({
+    role: m.role,
+    content: Array.isArray(m.content) ? (m.content.find(c => c.type === 'text')?.text || '') : String(m.content || ''),
+  }));
+}
+function messagesHaveImages(messages) {
+  return messages.some(m => Array.isArray(m.content) && m.content.some(c => c && c.type === 'image_url'));
 }
 
-let _cerebrasKeyIdx = 0;
-function pickCerebrasKey(env) {
-  const keys = getCerebrasKeys(env);
-  if (keys.length === 0) return null;
+// —— GROQ — 5 keys on separate accounts ————————————————
+// 2026-09-26 lineup (llama-3.3-70b is RETIRED on Groq): gpt-oss-120b flagship,
+// gpt-oss-20b fast, qwen3.8-27b alt. All text-only -> images are flattened.
+const GROQ_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
+let _groqIdx = 0;
+function pickGroqKey(env) {
+  const keys = getJsonList(env, 'GROQ_KEYS_JSON');
   for (let i = 0; i < keys.length; i++) {
-    const idx = (_cerebrasKeyIdx + i) % keys.length;
-    if (cerebrasRateCheck(idx)) {
-      _cerebrasKeyIdx = (idx + 1) % keys.length;
-      return { key: keys[idx], idx };
-    }
+    const idx = (_groqIdx + i) % keys.length;
+    if (!keyCooling('groq#' + idx)) { _groqIdx = (idx + 1) % keys.length; return { key: keys[idx], idx }; }
   }
   return null;
 }
-
-async function callCerebras(env, messages, systemPrompt) {
-  const picked = pickCerebrasKey(env);
-  if (!picked) throw new Error('All Cerebras keys rate-limited');
-  const flatMessages = messages.map(m => {
-    if (Array.isArray(m.content)) {
-      const textPart = m.content.find(c => c.type === 'text');
-      return { role: m.role, content: textPart ? textPart.text : '' };
+async function callGroq(env, messages, systemPrompt, maxTokens = 4096) {
+  const flat = flattenToText(messages);
+  let lastErr = null;
+  for (let round = 0; round < 3; round++) {
+    const picked = pickGroqKey(env);
+    if (!picked) break;
+    for (const model of GROQ_MODELS) {
+      try {
+        const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${picked.key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'system', content: systemPrompt || GROQ_SYSTEM_PROMPT }, ...flat],
+            temperature: 0.7,
+            max_tokens: maxTokens,
+          }),
+          signal: AbortSignal.timeout(60000),
+        });
+        if (r.status === 429) {
+          const resetS = parseFloat(r.headers.get('x-ratelimit-reset-tokens') || r.headers.get('x-ratelimit-reset-requests') || '60');
+          markKeyDown('groq#' + picked.idx, Math.min(Math.max((resetS || 60) * 1000, 30000), 10 * 60 * 1000));
+          lastErr = new Error(`Groq key#${picked.idx + 1} rate-limited`);
+          break; // key-limited -> next key, not next model
+        }
+        if (r.status === 401 || r.status === 403) {
+          markKeyDown('groq#' + picked.idx, 24 * 3600 * 1000);
+          lastErr = new Error(`Groq key#${picked.idx + 1} rejected (${r.status})`);
+          break;
+        }
+        if (!r.ok) { const err = await r.json().catch(() => ({})); lastErr = new Error(err?.error?.message || `Groq error: ${r.status}`); continue; }
+        const data = await r.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        if (text) { markKeyUp('groq#' + picked.idx); return text; }
+        lastErr = new Error('Groq empty response (' + model + ')');
+      } catch (e) { lastErr = e; }
     }
-    return m;
-  });
-  const r = await fetch('https://api.cerebras.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${picked.key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b',
-      messages: [{ role: 'system', content: systemPrompt || GROQ_SYSTEM_PROMPT }, ...flatMessages],
-      temperature: 0.7, max_tokens: 8192,
-    }),
-  });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Cerebras error: ${r.status}`);
   }
-  const data = await r.json();
-  return data.choices[0]?.message?.content || '';
+  throw new Error('Groq failed: ' + (lastErr?.message || 'no usable keys'));
+}
+
+// —— OPENROUTER — 5 keys, separate accounts, :free models ————
+// Free tier: 50 free-model requests/day per account (creator ids verified
+// distinct 2026-09-26). Free models also have per-model capacity 429s
+// (qwen/gemma sometimes busy) -> model fallback chain handles it.
+const OPENROUTER_MODELS = ['qwen/qwen3.8-27b:free', 'google/gemma-4-31b-it:free', 'inclusionai/ling-3.0-flash-sante:free', 'nvidia/nemotron-3-super-120b-a12b:free'];
+const OR_FREE_DAILY = 50;
+const _orDaily = new Map();                          // 'openrouter#idx' -> {day, count}
+function orDailyLeft(idx) {
+  const day = new Date().toISOString().slice(0, 10);
+  const rec = _orDaily.get('openrouter#' + idx);
+  if (!rec || rec.day !== day) return OR_FREE_DAILY;
+  return Math.max(0, OR_FREE_DAILY - rec.count);
+}
+function orDailyUse(idx) {
+  const id = 'openrouter#' + idx;
+  const day = new Date().toISOString().slice(0, 10);
+  const rec = _orDaily.get(id);
+  if (!rec || rec.day !== day) _orDaily.set(id, { day, count: 1 });
+  else rec.count++;
+}
+let _orIdx = 0;
+function pickOpenRouterKey(env) {
+  const keys = getJsonList(env, 'OPENROUTER_KEYS_JSON');
+  for (let i = 0; i < keys.length; i++) {
+    const idx = (_orIdx + i) % keys.length;
+    if (!keyCooling('openrouter#' + idx) && orDailyLeft(idx) > 0) { _orIdx = (idx + 1) % keys.length; return { key: keys[idx], idx }; }
+  }
+  return null;
+}
+async function callOpenRouter(env, messages, systemPrompt, maxTokens = 4096) {
+  const flat = flattenToText(messages);
+  let lastErr = null;
+  for (let round = 0; round < 3; round++) {
+    const picked = pickOpenRouterKey(env);
+    if (!picked) break;
+    for (const model of OPENROUTER_MODELS) {
+      try {
+        const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${picked.key}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://stxaviers.pages.dev',
+            'X-Title': 'XavierDrive',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'system', content: systemPrompt || GROQ_SYSTEM_PROMPT }, ...flat],
+            temperature: 0.7,
+            max_tokens: maxTokens,
+          }),
+          signal: AbortSignal.timeout(90000),
+        });
+        if (r.status === 429) {
+          const bodyTxt = await r.text().catch(() => '');
+          if (/per day|daily/i.test(bodyTxt)) markKeyDown('openrouter#' + picked.idx, msUntilUtcMidnight());
+          else markKeyDown('openrouter#' + picked.idx, 90 * 1000);
+          lastErr = new Error('OpenRouter key#' + (picked.idx + 1) + ' rate-limited');
+          break; // next key
+        }
+        if (r.status === 401 || r.status === 403) { markKeyDown('openrouter#' + picked.idx, 24 * 3600 * 1000); lastErr = new Error('OpenRouter key#' + (picked.idx + 1) + ' rejected'); break; }
+        if (!r.ok) { const err = await r.json().catch(() => ({})); lastErr = new Error(err?.error?.message || `OpenRouter ${r.status}`); continue; }
+        const data = await r.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        if (text) { orDailyUse(picked.idx); markKeyUp('openrouter#' + picked.idx); return text; }
+        lastErr = new Error('OpenRouter empty (' + model + ')');
+      } catch (e) { lastErr = e; }
+    }
+  }
+  throw new Error('OpenRouter failed: ' + (lastErr?.message || 'no usable keys'));
+}
+
+// —— CLOUDFLARE WORKERS AI (REST API, cfut_ tokens) ————————
+// Endpoint: /client/v4/accounts/{account}/ai/run/{model} (verified live).
+// Free allocation: 10k neurons/day per account, resets 00:00 UTC.
+// glm-4.7-flash is the value pick (~275k output tokens/day per account).
+// Response shape: {result:{choices:[{message:{content}}]}, success:true}.
+const CF_AI_MODELS = ['@cf/zai-org/glm-4.7-flash', '@cf/openai/gpt-oss-120b', '@cf/meta/llama-3.3-70b-instruct-fp8-fast'];
+let _cfIdx = 0;
+function pickCfEntry(env) {
+  const entries = getJsonList(env, 'CF_AI_KEYS_JSON');
+  for (let i = 0; i < entries.length; i++) {
+    const idx = (_cfIdx + i) % entries.length;
+    const e = entries[idx];
+    if (e && e.token && e.account && !keyCooling('cfai#' + idx)) { _cfIdx = (idx + 1) % entries.length; return { entry: e, idx }; }
+  }
+  return null;
+}
+async function callCfAi(env, messages, systemPrompt, maxTokens = 4096) {
+  const flat = flattenToText(messages);
+  let lastErr = null;
+  for (let round = 0; round < 2; round++) {
+    const picked = pickCfEntry(env);
+    if (!picked) break;
+    for (const model of CF_AI_MODELS) {
+      try {
+        const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${picked.entry.account}/ai/run/${model}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${picked.entry.token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt || GROQ_SYSTEM_PROMPT }, ...flat], max_tokens: maxTokens }),
+          signal: AbortSignal.timeout(90000),
+        });
+        if (r.status === 429) {
+          markKeyDown('cfai#' + picked.idx, msUntilUtcMidnight());
+          lastErr = new Error('Workers AI account#' + (picked.idx + 1) + ' daily neurons exhausted');
+          break;
+        }
+        if (r.status === 401 || r.status === 403) { markKeyDown('cfai#' + picked.idx, 24 * 3600 * 1000); lastErr = new Error('Workers AI token#' + (picked.idx + 1) + ' rejected'); break; }
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data?.success) { lastErr = new Error((data?.errors?.[0]?.message) || `Workers AI ${r.status}`); continue; }
+        const text = data?.result?.choices?.[0]?.message?.content || data?.result?.response || '';
+        if (typeof text === 'string' && text) { markKeyUp('cfai#' + picked.idx); return text; }
+        lastErr = new Error('Workers AI empty (' + model + ')');
+      } catch (e) { lastErr = e; }
+    }
+  }
+  throw new Error('Workers AI failed: ' + (lastErr?.message || 'no usable tokens'));
 }
 
 // ═══════════════════════════════════════════════════════
-// Smart router (owner directive 2026-09-25): GROQ + CEREBRAS PRIMARY,
-// GEMINI BACKUP ONLY. A provider that just failed enters a short cooldown
-// (circuit breaker) so dead keys don't add latency to every message; when
-// ALL providers are cooling down we still try them (keys may have been
-// rotated and we must never hard-fail while any provider might work).
+// Smart router (owner directive 2026-09-26): GROQ -> OPENROUTER ->
+// CF WORKERS AI -> GEMINI (backup). A provider that just failed enters a
+// short cooldown (circuit breaker) so dead keys don't add latency to every
+// message; when ALL providers are cooling down we still try them (keys may
+// have been rotated and we must never hard-fail while any provider works).
 // ═══════════════════════════════════════════════════════
 const _aiCooldowns = new Map();          // provider -> retry-after timestamp
 const AI_COOLDOWN_MS = 10 * 60 * 1000;   // 10 minutes
@@ -802,19 +911,20 @@ function providerCooling(name) { return (_aiCooldowns.get(name) || 0) > Date.now
 function markProviderDown(name) { _aiCooldowns.set(name, Date.now() + AI_COOLDOWN_MS); }
 function markProviderUp(name) { _aiCooldowns.delete(name); }
 
-async function callGroqOrCerebras(env, messages, systemPrompt) {
-  const primaries = [];
-  if (env.GROQ_KEY) primaries.push('groq');
-  if (getCerebrasKeys(env).length) primaries.push('cerebras');
-  if (primaries.length === 2 && Math.random() < 0.5) primaries.reverse(); // load-balance
-  const order = [...primaries, 'gemini'];                                 // Gemini = backup only
+async function callGroqOrCerebras(env, messages, systemPrompt, opts = {}) {
+  const maxTokens = opts.maxTokens || 4096;
+  const hasImages = messagesHaveImages(messages);
+  // Image messages: only Gemini is multimodal in our lineup -> try it first.
+  const order = hasImages ? ['gemini', 'cfai'] : ['groq', 'openrouter', 'cfai', 'gemini'];
   const live = order.filter(p => !providerCooling(p));
   const tryList = live.length ? live : order;
   let lastError = null;
   for (const p of tryList) {
+    if (hasImages && (p === 'groq' || p === 'openrouter')) continue; // text-only models
     try {
-      const text = p === 'groq' ? await callGroq(env, messages, systemPrompt)
-                : p === 'cerebras' ? await callCerebras(env, messages, systemPrompt)
+      const text = p === 'groq' ? await callGroq(env, messages, systemPrompt, maxTokens)
+                : p === 'openrouter' ? await callOpenRouter(env, messages, systemPrompt, maxTokens)
+                : p === 'cfai' ? await callCfAi(env, messages, systemPrompt, maxTokens)
                 : await callGeminiChat(env, messages, systemPrompt);
       markProviderUp(p);
       _lastProviderUsed = p;
@@ -823,6 +933,19 @@ async function callGroqOrCerebras(env, messages, systemPrompt) {
       markProviderDown(p);
       lastError = e;
       console.warn(`[ai-router] ${p} failed: ${e.message}`);
+    }
+  }
+  // Last resort for image messages: answer text-only (tell the user).
+  if (hasImages) {
+    const flat = flattenToText(messages);
+    for (const p of ['groq', 'openrouter', 'cfai']) {
+      try {
+        const text = p === 'groq' ? await callGroq(env, flat, systemPrompt, maxTokens)
+                  : p === 'openrouter' ? await callOpenRouter(env, flat, systemPrompt, maxTokens)
+                  : await callCfAi(env, flat, systemPrompt, maxTokens);
+        _lastProviderUsed = p;
+        return '_(Image could not be processed by the available AI providers right now — answering from your text only.)_\n\n' + text;
+      } catch (e) { lastError = e; }
     }
   }
   throw new Error('All AI providers failed. Last: ' + (lastError?.message || 'unknown'));
@@ -841,14 +964,15 @@ async function callGemini(env, prompt, systemInstruction = null, jsonMode = fals
 }
 
 // —— Gemini core (2026-09-24 revive) ————————————————————
-// gemini-2.0-flash was RETIRED by Google (404 "no longer available"). Current
-// verified model: gemini-3.8-flash (tested live with GEMINI_KEY_1).
-// Key order: 1 first (verified alive), then 3,4,5 (alive, sometimes 503), 2 last
-// (project denied). Model fallback: flash-latest alias.
+// gemini-2.0-flash and gemini-2.5-flash are RETIRED for new users (404:
+// "update your code to use models/gemini-3.8-flash"). Verified working
+// 2026-09-26: gemini-3.8-flash + gemini-flash-latest alias. 5 keys on 5
+// SEPARATE projects (correlation-tested: bursting key1 to 429s left key2
+// untouched) -> rotation is now safe per-key.
 const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-flash-latest'];
 
 async function geminiGenerate(env, body) {
-  const keyMap = [env.GEMINI_KEY_1, env.GEMINI_KEY_3, env.GEMINI_KEY_4, env.GEMINI_KEY_5, env.GEMINI_KEY_2].filter(Boolean);
+  const keyMap = getJsonList(env, 'GEMINI_KEYS_JSON');
   if (!keyMap.length) throw new Error('No Gemini keys configured');
   let lastError = null;
   let sawGeoBlock = false;
@@ -970,6 +1094,26 @@ function rateCheck(email, endpoint, limit) {
   return { allowed: true };
 }
 
+// —— Smart search gating (owner directive 2026-09-26) ————————————
+// The web-search-first engine should fire for basically every real message
+// ("too often"), but NOT for greetings / tiny acknowledgements like "Hi",
+// "thanks", "ok". Conservative: only skip when the WHOLE message is a
+// greeting/ack, emoji-only, or empty.
+function needsResearch(message) {
+  const t = String(message || '').trim();
+  if (!t) return false;
+  if (t.length <= 8 && !/[a-z0-9]/i.test(t)) return false;               // emoji/symbol only
+  if (t.length < 34) {
+    // strip emojis/pictographs so "Hi 👁👄👁" tests as "hi"
+    const low = t.toLowerCase().replace(/[!.,~\s]+$/, '').replace(/[^\p{L}\p{N}\s'?!.,]/gu, '').trim();
+    if (!low) return false;                                              // nothing but emoji left
+    if (/^(hi+|hey+|hello+|yo+|sup|hola|namaste|greetings|good\s*(morning|afternoon|evening|night|day)|gm|gn|thanks+|thank\s*you+|thx+|ty|tysm|ok+|okay+|k+|cool|nice|great|awesome|good|fine|perfect|lol|lmao|haha+|hehe+|bruh|bye|goodbye|see\s*ya|later|yes+|yeah+|yep+|no+|nah+|nope+|wow+|omg+|sad|happy)[\s?!.]*$/i.test(low)) return false;
+    if (/^(what'?s\s*up|wassup|wsp|wsup|how\s*(are|r)\s*(you|u)|hru|you\s*good|u\s*good)[\s?!.]*$/i.test(low)) return false;
+    if (/^(who|what)'?s\s*(this|there|up)[\s?!.]*$/i.test(low)) return false;
+  }
+  return true;
+}
+
 // —— Live web research via XavierDrive backend (search-before-answer) ————
 // Owner directive 2026-09-24: the AI must ALWAYS search the web before answering,
 // like GPT/Claude/Gemini research mode. Backend runs the engine chain
@@ -1080,82 +1224,116 @@ async function handleAIStatus(request, env) {
     }
   };
   const jobs = [];
-  if (env.GROQ_KEY) jobs.push(probe('groq', 'https://api.groq.com/openai/v1/models', { Authorization: `Bearer ${env.GROQ_KEY}` }));
-  const ckeys = getCerebrasKeys(env);
-  ckeys.forEach((k, i) => jobs.push(probe('cerebras#' + (i + 1), 'https://api.cerebras.ai/v1/models', { Authorization: `Bearer ${k}` })));
-  [env.GEMINI_KEY_1, env.GEMINI_KEY_2, env.GEMINI_KEY_3, env.GEMINI_KEY_4, env.GEMINI_KEY_5].forEach((k, i) => {
-    if (k) jobs.push(probe('gemini#' + (i + 1), 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=100', { 'x-goog-api-key': k }));
+  getJsonList(env, 'GROQ_KEYS_JSON').forEach((k, i) => jobs.push(probe('groq#' + (i + 1), 'https://api.groq.com/openai/v1/models', { Authorization: `Bearer ${k}` })));
+  getJsonList(env, 'OPENROUTER_KEYS_JSON').forEach((k, i) => jobs.push(probe('openrouter#' + (i + 1), 'https://openrouter.ai/api/v1/models', { Authorization: `Bearer ${k}` })));
+  getJsonList(env, 'CF_AI_KEYS_JSON').forEach((e, i) => jobs.push(probe('cfai#' + (i + 1), `https://api.cloudflare.com/client/v4/accounts/${e.account}/ai/models/search?per_page=5`, { Authorization: `Bearer ${e.token}` })));
+  getJsonList(env, 'GEMINI_KEYS_JSON').forEach((k, i) => {
+    jobs.push(probe('gemini#' + (i + 1), 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=5', { 'x-goog-api-key': k }));
   });
   const results = await Promise.all(jobs);
-  // DEEP PROBE (?deep=1): actual 5-token generation per key — definitive status.
+  // DEEP PROBE (?deep=1): real generation per key — definitive status.
+  // Probes mirror production params (bigger max_tokens because gpt-oss
+  // spends reasoning tokens first; model fallback chains like callOpenRouter).
   let deep = null;
   const url = new URL(request.url);
   if (url.searchParams.get('deep') === '1') {
-    deep = { groq: null, cerebras: [], gemini: [] };
-    const genProbe = async (name, fn) => {
+    deep = { groq: [], openrouter: [], cfai: [], gemini: [] };
+    const wrap = async (label, fn) => {
       const t0 = Date.now();
       try {
         const text = await fn();
-        return { provider: name, ok: true, ms: Date.now() - t0, sample: String(text).slice(0, 40) };
+        return { provider: label, ok: true, ms: Date.now() - t0, sample: String(text).slice(0, 40) };
       } catch (e) {
-        return { provider: name, ok: false, ms: Date.now() - t0, error: String(e.message).slice(0, 160) };
+        return { provider: label, ok: false, ms: Date.now() - t0, error: String(e.message).slice(0, 160) };
       }
     };
-    if (env.GROQ_KEY) {
-      deep.groq = await genProbe('groq', () => callGroq(env, [{ role: 'user', content: 'Say OK' }], 'Reply with exactly: OK').then(t => { if (!t.trim()) throw new Error('empty'); return t; }));
+    const groqProbeKey = async (key) => {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'openai/gpt-oss-120b', messages: [{ role: 'user', content: 'Say OK' }], max_tokens: 300 }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e?.error?.message || ('HTTP ' + r.status)); }
+      const d = await r.json();
+      const text = d.choices?.[0]?.message?.content || '';
+      if (!String(text).trim()) throw new Error('empty (reasoning ate budget)');
+      return text;
+    };
+    const openRouterProbeKey = async (key) => {
+      let lastErr = null;
+      for (const model of ['qwen/qwen3.8-27b:free', 'nvidia/nemotron-3-super-120b-a12b:free', 'inclusionai/ling-3.0-flash-sante:free']) {
+        try {
+          const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://stxaviers.pages.dev', 'X-Title': 'XavierDrive' },
+            body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Say OK' }], max_tokens: 300 }),
+            signal: AbortSignal.timeout(45000),
+          });
+          if (!r.ok) { const e = await r.json().catch(() => ({})); lastErr = new Error(e?.error?.message || ('HTTP ' + r.status)); continue; }
+          const d = await r.json();
+          const text = d.choices?.[0]?.message?.content || '';
+          if (String(text).trim()) return text;
+          lastErr = new Error('empty (' + model + ')');
+        } catch (e) { lastErr = e; }
+      }
+      throw lastErr || new Error('all models failed');
+    };
+    const geminiProbeKey = async (key) => {
+      let lastErr = null;
+      for (const model of GEMINI_MODELS) {
+        try {
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+            body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Say OK' }] }] }),
+            signal: AbortSignal.timeout(30000),
+          });
+          if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e?.error?.message || ('HTTP ' + r.status)); }
+          const d = await r.json();
+          const text = (d.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+          if (String(text).trim()) return text;
+          throw new Error('empty (' + model + ')');
+        } catch (e) { lastErr = e; }
+      }
+      throw lastErr || new Error('all models failed');
+    };
+    for (const [i, k] of getJsonList(env, 'GROQ_KEYS_JSON').entries()) {
+      deep.groq.push(await wrap('groq#' + (i + 1), () => groqProbeKey(k)));
     }
-    const ckeys2 = getCerebrasKeys(env);
-    for (let i = 0; i < ckeys2.length; i++) {
-      deep.cerebras.push(await genProbe('cerebras#' + (i + 1), () => callCerebrasWithKey(env, ckeys2[i], [{ role: 'user', content: 'Say OK' }], 'Reply with exactly: OK').then(t => { if (!t.trim()) throw new Error('empty'); return t; })));
+    for (const [i, k] of getJsonList(env, 'OPENROUTER_KEYS_JSON').entries()) {
+      deep.openrouter.push(await wrap('openrouter#' + (i + 1), () => openRouterProbeKey(k)));
     }
-    const gk = [env.GEMINI_KEY_1, env.GEMINI_KEY_2, env.GEMINI_KEY_3, env.GEMINI_KEY_4, env.GEMINI_KEY_5];
-    for (let i = 0; i < gk.length; i++) {
-      if (gk[i]) deep.gemini.push(await genProbe('gemini#' + (i + 1), () => geminiDirectWithKey(gk[i], { contents: [{ role: 'user', parts: [{ text: 'Say OK' }] }], generationConfig: { maxOutputTokens: 10 } })));
+    for (const [i, e] of getJsonList(env, 'CF_AI_KEYS_JSON').entries()) {
+      deep.cfai.push(await wrap('cfai#' + (i + 1), async () => {
+        const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${e.account}/ai/run/@cf/zai-org/glm-4.7-flash`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${e.token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: [{ role: 'user', content: 'Say OK' }], max_tokens: 300 }),
+          signal: AbortSignal.timeout(30000),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d?.success) throw new Error((d?.errors?.[0]?.message) || ('HTTP ' + r.status));
+        const text = d?.result?.choices?.[0]?.message?.content || '';
+        if (!String(text).trim()) throw new Error('empty');
+        return text;
+      }));
+    }
+    for (const [i, k] of getJsonList(env, 'GEMINI_KEYS_JSON').entries()) {
+      deep.gemini.push(await wrap('gemini#' + (i + 1), () => geminiProbeKey(k)));
     }
   }
   const cooldowns = {};
   for (const [k, v] of _aiCooldowns) if (v > Date.now()) cooldowns[k] = new Date(v).toISOString();
+  const keyCooldowns = {};
+  for (const [k, v] of _keyCooldowns) if (v > Date.now()) keyCooldowns[k] = new Date(v).toISOString();
   return json({
     when: new Date().toISOString(),
-    providerOrder: ['groq', 'cerebras', 'gemini (backup)'],
+    providerOrder: ['groq', 'openrouter', 'cfai (workers-ai)', 'gemini (backup)'],
     results,
     deep,
-    router: { cooldowns, lastProviderUsed: _lastProviderUsed },
+    router: { cooldowns, keyCooldowns, lastProviderUsed: _lastProviderUsed },
   });
-}
-
-// Direct single-key helpers for the deep status probe (no router, no relay).
-async function callCerebrasWithKey(env, key, messages, systemPrompt) {
-  const flatMessages = messages.map(m => ({ role: m.role, content: String(m.content || '') }));
-  const r = await fetch('https://api.cerebras.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'llama-3.3-70b', messages: [{ role: 'system', content: systemPrompt || '' }, ...flatMessages], max_tokens: 8 }),
-  });
-  if (!r.ok) { const err = await r.json().catch(() => ({})); throw new Error(err?.error?.message || `Cerebras ${r.status}`); }
-  const data = await r.json();
-  return data.choices[0]?.message?.content || '';
-}
-
-async function geminiDirectWithKey(key, body) {
-  for (const model of GEMINI_MODELS) {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify(body),
-      });
-      if (r.ok) {
-        const data = await r.json();
-        const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
-        if (text) return text;
-        continue;
-      }
-      const err = await r.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Gemini ${r.status}`);
-    } catch (e) { throw e; }
-  }
-  throw new Error('all models empty');
 }
 
 // —— AI Chat STREAM handler (z.ai-style agent steps) ————————————
@@ -1233,7 +1411,7 @@ async function handleAIChatStream(request, env, origin) {
         // FALLBACK: worker-direct (no research steps if backend is down)
         if (!answered) {
           let researchBlock = '';
-          try { researchBlock = await backendResearch(env, message); } catch (e) {}
+          try { if (needsResearch(message)) researchBlock = await backendResearch(env, message); } catch (e) {}
           const systemExtra = `[User Context: role=${actualRole}${verifiedRole.isAdmin ? ' (admin)' : ''}${actualRole === 'student' && body.class ? `, class=${body.class}` : ''}, email=${userEmail}]` + (researchBlock ? '\n\n' + researchBlock : '');
           const messages = (history || []).slice(-30).map(m => ({
             role: m.role === 'ai' ? 'assistant' : 'user',
@@ -1414,7 +1592,7 @@ async function handleAIChat(request, env, origin) {
   try {
     // Research if the backend search engine is still reachable; non-fatal.
     let researchBlock = '';
-    try { researchBlock = await backendResearch(env, message); } catch (e) {}
+    try { if (needsResearch(message)) researchBlock = await backendResearch(env, message); } catch (e) {}
 
     const messages = (history || []).slice(-30).map(m => ({
       role: m.role === 'ai' ? 'assistant' : 'user',
@@ -1484,7 +1662,7 @@ async function handleQuota(request, env, origin) {
 
 // —— PDF creation handler ——————————————————————————
 
-const PDF_SYSTEM_INSTRUCTION = `You are an expert PDF document designer for St. Xavier's School, Muzaffarpur. Generate a COMPLETE, BEAUTIFUL, PRINT-READY HTML document for the following request.
+const PDF_SYSTEM_INSTRUCTION = `You are an expert PDF document designer for St. Xavier's School, Jaipur. Generate a COMPLETE, BEAUTIFUL, PRINT-READY HTML document for the following request.
 
 OUTPUT RULES — CRITICAL:
 - Output ONLY the full HTML document. Nothing else. No explanation. No markdown. No backticks.
@@ -2141,10 +2319,13 @@ async function handleTTS(request, env, origin) {
   const safeVoice = String(voice || 'austin').substring(0, 30).replace(/[^a-zA-Z0-9_-]/g, '');
 
   try {
+    const groqKeys = getJsonList(env, 'GROQ_KEYS_JSON');
+    if (!groqKeys.length) return json({ error: 'TTS not configured' }, 500, origin);
+    const ttsKey = groqKeys.find((k, i) => !keyCooling('groq#' + i)) || groqKeys[0];
     const r = await fetch('https://api.groq.com/openai/v1/audio/speech', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.GROQ_KEY}`,
+        'Authorization': `Bearer ${ttsKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
