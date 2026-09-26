@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<clip xmlns:android="http://schemas.android.com/apk/res/android">
+    <shape android:shape="rectangle">
+        <gradient android:type="linear" android:angle="0"
+            android:startColor="@color/cta_start" android:centerColor="@color/cyan" android:endColor="@color/cta_end" />
+        <corners android:radius="999dp" />
+    </shape>
+</clip>
