@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- DARK palette (night) — auto-selected by the system. -->
+<resources>
+    <color name="accent">#4f8ef7</color>
+    <color name="accent2">#a64ff7</color>
+    <color name="accent3">#f74f7a</color>
+    <color name="accent4">#f7c44f</color>
+    <color name="cyan">#22d3ee</color>
+
+    <color name="ink">#f2f5ff</color>
+    <color name="muted">#8b93b8</color>
+    <color name="bg_deep">#070d1f</color>
+    <color name="bg_mid">#141b3f</color>
+    <color name="white">#ffffff</color>
+
+    <!-- login -->
+    <color name="login_bg">#070a18</color>
+    <color name="login_ink">#f2f5ff</color>
+    <color name="login_muted">#8b93b8</color>
+    <color name="login_card">#cc151a2e</color>
+    <color name="login_card_border">#14ffffff</color>
+    <color name="login_chip_bg">#a8141826</color>
+    <color name="login_chip_stroke">#1cffffff</color>
+    <color name="login_chip_ink">#c9d4f0</color>
+    <color name="gbtn_bg">#ffffff</color>
+    <color name="gbtn_ink">#1a1c2c</color>
+    <color name="gbtn_border">#00000000</color>
+    <color name="shine_color">#99dceaff</color>
+    <color name="cta_start">#4f8ef7</color>
+    <color name="cta_end">#a64ff7</color>
+    <color name="cta_ink">#ffffff</color>
+    <color name="track_bg">#26ffffff</color>
+    <color name="continue_ink">#8ec5ff</color>
+    <color name="update_panel">#e6141826</color>
+    <color name="orb1">#4f8ef7</color>
+    <color name="orb2">#a64ff7</color>
+    <color name="orb3">#f74f7a</color>
+    <color name="orb4">#22d3ee</color>
+    <color name="star_col">#d6e1ff</color>
+    <color name="shoot_col">#ffffff</color>
+    <color name="ring_a">#4f8ef7</color>
+    <color name="ring_b">#f74f7a</color>
+    <color name="status_scrim">#99070a18</color>
+</resources>
