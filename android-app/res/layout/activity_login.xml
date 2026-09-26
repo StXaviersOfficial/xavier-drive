@@ -46,20 +46,6 @@
                     android:background="@drawable/splash_glow" />
 
                 <View
-                    android:id="@+id/login_ring1"
-                    android:layout_width="192dp"
-                    android:layout_height="192dp"
-                    android:layout_gravity="center"
-                    android:background="@drawable/ring1" />
-
-                <View
-                    android:id="@+id/login_ring2"
-                    android:layout_width="220dp"
-                    android:layout_height="220dp"
-                    android:layout_gravity="center"
-                    android:background="@drawable/ring2" />
-
-                <View
                     android:id="@+id/orbit_dot1"
                     android:layout_width="9dp"
                     android:layout_height="9dp"
@@ -231,19 +217,6 @@
                         android:text="@string/login_note" />
                 </LinearLayout>
             </com.stxaviers.app.GlowCardView>
-
-            <!-- design-only era: jump into the portal -->
-            <TextView
-                android:id="@+id/continue_link"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:padding="10dp"
-                android:background="@drawable/text_btn_bg"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:textColor="@color/continue_ink"
-                android:text="@string/login_continue" />
         </LinearLayout>
     </ScrollView>
 </FrameLayout>
