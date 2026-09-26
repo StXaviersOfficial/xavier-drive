@@ -1,7 +1,6 @@
 package com.stxaviers.app;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -16,6 +15,12 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.webkit.CookieManager;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 /**
  * The native login page — the web's cinematic login recoded in pure Android,
@@ -24,21 +29,27 @@ import android.widget.TextView;
  *   AuroraView          4 drifting screen-blended orbs (theme aware)
  *   StarfieldView       twinkling stars / bokeh + shooting stars + parallax
  *   logo                overshoot pop + endless float + pulsing glow +
- *                       counter-rotating rings + 2 orbiting electron dots
- *   title               per-letter stagger (translateY + scale + blurless)
+ *                       2 orbiting electron dots
+ *   title               per-letter stagger (translateY + scale)
  *                       with sweeping rainbow gradient (ShimmerTextView)
  *   chips               staggered slide-up + infinite float w/ phase offsets
  *   GlowCardView        glass card + rotating conic border + 3D tilt
  *                       (touch-follow, spring return, idle sway)
  *   google button       magnetic pull + shine sweep + ripple + press scale
+ *                       -> opens AuthActivity (real Google sign-in)
  *
  * Auto-themes: every color is a @color ref — values/ = light,
  * values-night/ = dark; the system picks at inflate time.
+ *
+ * Returning users skip straight to the portal: if a live worker session
+ * cookie exists (7-day validity), /me is checked in the background and the
+ * app continues into MainActivity without showing the login friction.
  */
 public class LoginActivity extends Activity {
 
     private final Handler h = new Handler(Looper.getMainLooper());
     private boolean fx = true;
+    private boolean leaving = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,8 +62,8 @@ public class LoginActivity extends Activity {
             wireGoogleButton();
             entrance();
             if (fx) loops();
-            findViewById(R.id.continue_link).setOnClickListener(v -> goMain());
         } catch (Throwable ignored) {}
+        checkExistingSession();
     }
 
     // ── kinetic title: one ShimmerTextView per letter ───────────────────
@@ -64,8 +75,10 @@ public class LoginActivity extends Activity {
         int idx = 0;
         OvershootInterpolator over = new OvershootInterpolator(1.28f);
         for (int r = 0; r < rows.length; r++) {
+            String row = rows[r] == null ? "" : rows[r];
+            if (row.isEmpty()) continue; // single-word brand: row 2 unused
             LinearLayout box = findViewById(r == 0 ? R.id.title_row1 : R.id.title_row2);
-            for (char ch : rows[r].toCharArray()) {
+            for (char ch : row.toCharArray()) {
                 final ShimmerTextView tv = new ShimmerTextView(this);
                 tv.setText(String.valueOf(ch));
                 tv.setTextSize(32);
@@ -130,7 +143,7 @@ public class LoginActivity extends Activity {
         });
     }
 
-    // ── google button: magnetic + shine + press ─────────────────────────
+    // ── google button: magnetic + shine + REAL sign-in ──────────────────
     private void wireGoogleButton() {
         final Button btn = findViewById(R.id.gbtn);
         final View shine = findViewById(R.id.gbtn_shine);
@@ -165,7 +178,7 @@ public class LoginActivity extends Activity {
                 return false; // keep click handling
             }
         });
-        btn.setOnClickListener(v -> showComingSoon());
+        btn.setOnClickListener(v -> goAuth());
 
         // shine sweep loop
         if (fx && shine != null) {
@@ -190,26 +203,55 @@ public class LoginActivity extends Activity {
         }
     }
 
-    private void showComingSoon() {
-        new AlertDialog.Builder(this, R.style.Theme_XavierDrive_Dialog)
-                .setTitle(R.string.login_coming_title)
-                .setMessage(R.string.login_coming_msg)
-                .setPositiveButton(R.string.continue_to_app,
-                        (d, w) -> goMain())
-                .setNegativeButton(R.string.close, null)
-                .show();
+    // ── returning users: live session cookie -> skip the login ──────────
+    private void checkExistingSession() {
+        new Thread(() -> {
+            boolean ok = false;
+            try {
+                String cookies = CookieManager.getInstance()
+                        .getCookie(GoogleAuth.WORKER_URL);
+                if (cookies != null
+                        && cookies.contains(GoogleAuth.SESSION_COOKIE + "=")) {
+                    HttpURLConnection c = (HttpURLConnection)
+                            new URL(GoogleAuth.ME_URL).openConnection();
+                    c.setRequestMethod("GET");
+                    c.setConnectTimeout(6000);
+                    c.setReadTimeout(6000);
+                    c.setRequestProperty("Cookie", cookies);
+                    ok = (c.getResponseCode() == 200);
+                }
+            } catch (Throwable ignored) {
+            }
+            if (ok) {
+                runOnUiThread(() -> {
+                    if (!leaving && !isFinishing()) {
+                        leaving = true;
+                        h.postDelayed(this::goMainSilent, 350L);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void goMainSilent() {
+        if (isFinishing()) return;
+        try {
+            startActivity(new Intent(this, MainActivity.class));
+        } catch (Throwable ignored) {
+        }
+        finish();
+        try {
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+        } catch (Throwable ignored) {}
     }
 
     // ── entrance choreography ───────────────────────────────────────────
     private void entrance() {
         final View glow = findViewById(R.id.login_glow);
-        final View ring1 = findViewById(R.id.login_ring1);
-        final View ring2 = findViewById(R.id.login_ring2);
         final ImageView logo = findViewById(R.id.login_logo);
         final View sub = findViewById(R.id.login_sub);
         final View chips = findViewById(R.id.chips_row);
         final View card = findViewById(R.id.login_card);
-        final View cont = findViewById(R.id.continue_link);
         final View hint = findViewById(R.id.login_hint);
         final View welcome = findViewById(R.id.login_welcome);
         final View note = findViewById(R.id.login_note);
@@ -218,8 +260,6 @@ public class LoginActivity extends Activity {
         OvershootInterpolator over = new OvershootInterpolator(1.9f);
 
         glow.setAlpha(0f);
-        ring1.setAlpha(0f);
-        ring2.setAlpha(0f);
         logo.setAlpha(0f);
         logo.setScaleX(0.25f);
         logo.setScaleY(0.25f);
@@ -231,7 +271,6 @@ public class LoginActivity extends Activity {
         card.setAlpha(0f);
         card.setTranslationY(40f);
         card.setScaleX(0.94f);
-        cont.setAlpha(0f);
         hint.setAlpha(0f);
         welcome.setAlpha(0f);
         welcome.setTranslationY(12f);
@@ -240,10 +279,6 @@ public class LoginActivity extends Activity {
         glow.animate().alpha(1f).setDuration(700).setInterpolator(dec).start();
         logo.animate().alpha(1f).scaleX(1f).scaleY(1f).rotation(0f)
                 .setDuration(850).setStartDelay(120).setInterpolator(over).start();
-        ring1.animate().alpha(1f).setDuration(600).setStartDelay(250)
-                .setInterpolator(dec).start();
-        ring2.animate().alpha(1f).setDuration(600).setStartDelay(450)
-                .setInterpolator(dec).start();
         sub.animate().alpha(1f).translationY(0f).setDuration(650)
                 .setStartDelay(560).setInterpolator(dec).start();
         chips.animate().alpha(1f).translationY(0f).setDuration(700)
@@ -254,14 +289,11 @@ public class LoginActivity extends Activity {
                 .setStartDelay(1000).setInterpolator(dec).start();
         hint.animate().alpha(1f).setDuration(500).setStartDelay(1120).start();
         note.animate().alpha(1f).setDuration(500).setStartDelay(1300).start();
-        cont.animate().alpha(1f).setDuration(600).setStartDelay(1450).start();
     }
 
-    // ── infinite loops: rings, orbit dots, glow pulse, logo float, chips ─
+    // ── infinite loops: orbit dots, glow pulse, logo float, chips ───────
     private void loops() {
         final View glow = findViewById(R.id.login_glow);
-        final View ring1 = findViewById(R.id.login_ring1);
-        final View ring2 = findViewById(R.id.login_ring2);
         final View logo = findViewById(R.id.login_logo);
         final View dot1 = findViewById(R.id.orbit_dot1);
         final View dot2 = findViewById(R.id.orbit_dot2);
@@ -270,20 +302,6 @@ public class LoginActivity extends Activity {
 
         AccelerateDecelerateInterpolator ace =
                 new AccelerateDecelerateInterpolator();
-
-        // rings counter-rotate (frame-stepped like the splash)
-        h.post(new Runnable() {
-            float a1 = 0f, a2 = 0f;
-            @Override
-            public void run() {
-                if (ring1 == null || ring2 == null) return;
-                a1 += 1.5f;
-                a2 -= 0.9f;
-                ring1.setRotation(a1);
-                ring2.setRotation(a2);
-                h.postDelayed(this, 16);
-            }
-        });
 
         // electron dots orbiting the logo
         h.post(new Runnable() {
@@ -366,14 +384,27 @@ public class LoginActivity extends Activity {
         });
     }
 
-    private void goMain() {
+    // ── the real Google sign-in ─────────────────────────────────────────
+    private void goAuth() {
         try {
-            startActivity(new Intent(this, MainActivity.class));
+            startActivityForResult(new Intent(this, AuthActivity.class), 7001);
         } catch (Throwable ignored) {}
-        finish();
         try {
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         } catch (Throwable ignored) {}
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        // AuthActivity already launched MainActivity on success — just get
+        // out of the way so Back from the portal exits the app cleanly.
+        if (requestCode == 7001 && resultCode == RESULT_OK) {
+            finish();
+            try {
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+            } catch (Throwable ignored) {}
+        }
     }
 
     @Override
