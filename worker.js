@@ -653,7 +653,7 @@ async function incrementQuota(env, email) {
 
 // —— Groq call ———————————————————————————————————
 
-const GROQ_SYSTEM_PROMPT = `You are StXaviersOnline AI — the official AI assistant of St. Xavier's School, embedded in the school portal. You are an AGENTIC assistant: the app researches every question on the web before you answer, and it can render charts and downloadable files from your output.
+const GROQ_SYSTEM_PROMPT = `You are Xavier's Drive AI — the official AI assistant of St. Xavier's School, embedded in the school portal. You are an AGENTIC assistant: for questions that need live web knowledge the app runs a web search BEFORE you answer and hands you the results, and it can render charts and downloadable files from your output.
 
 WHO YOU TALK TO
 The user's role and class are given in a context block. Tailor every reply:
@@ -661,7 +661,7 @@ The user's role and class are given in a context block. Tailor every reply:
 - TEACHERS/ADMINS/DEVELOPERS: full help — code, worksheets, lesson plans, any content.
 
 YOUR ABILITIES (the app renders these automatically)
-1. WEB SEARCH: every message is researched on the web BEFORE you answer. Use the research; cite sources as markdown links when helpful. NEVER reveal raw research: no queries, no URL lists, no terminal/system text. If asked what you searched, answer naturally in one line (e.g. "I checked a couple of sources on this topic").
+1. WEB SEARCH: when a question needs current/external facts, the app searches the web first and provides a research block — use it and cite sources as markdown links when helpful. If no research block is present, answer from your own knowledge. NEVER reveal raw research: no queries, no URL lists, no terminal/system text. If asked what you searched, answer naturally in one line (e.g. "I checked a couple of sources on this topic").
 2. CHARTS: when data/comparison/trends would help, output a chart block:
 \`\`\`chart
 {"type":"bar|line|pie","title":"...","labels":["..."],"datasets":[{"label":"...","data":[0,0]}]}
@@ -1192,8 +1192,9 @@ async function handleInternalAICall(request, env) {
   if (!messages.length) return json({ error: 'messages required' }, 400);
   const systemExtra = String(body.systemExtra || '').slice(0, 24000);
   const systemPrompt = systemExtra ? (GROQ_SYSTEM_PROMPT + '\n\n' + systemExtra) : GROQ_SYSTEM_PROMPT;
+  const maxTokens = Math.min(parseInt(body.maxTokens, 10) || 4096, 8192);
   try {
-    const text = await callGroqOrCerebras(env, messages, systemPrompt);
+    const text = await callGroqOrCerebras(env, messages, systemPrompt, maxTokens);
     return json({ ok: true, text, provider: _lastProviderUsed, cooldowns: [..._aiCooldowns.keys()] });
   } catch (e) {
     return json({ ok: false, error: e.message }, 502);
@@ -1408,11 +1409,12 @@ async function handleAIChatStream(request, env, origin) {
           } catch (e) { console.warn('backend chat stream failed, falling back:', e.message); }
         }
 
-        // FALLBACK: worker-direct (no research steps if backend is down)
+        // FALLBACK: worker-direct (backend down). No research here: search
+        // lives on the backend AND the owner directive says the AI decides
+        // when to search — the planner runs backend-side, so when it's down we
+        // simply answer without research.
         if (!answered) {
-          let researchBlock = '';
-          try { if (needsResearch(message)) researchBlock = await backendResearch(env, message); } catch (e) {}
-          const systemExtra = `[User Context: role=${actualRole}${verifiedRole.isAdmin ? ' (admin)' : ''}${actualRole === 'student' && body.class ? `, class=${body.class}` : ''}, email=${userEmail}]` + (researchBlock ? '\n\n' + researchBlock : '');
+          const systemExtra = `[User Context: role=${actualRole}${verifiedRole.isAdmin ? ' (admin)' : ''}${actualRole === 'student' && body.class ? `, class=${body.class}` : ''}, email=${userEmail}]`;
           const messages = (history || []).slice(-30).map(m => ({
             role: m.role === 'ai' ? 'assistant' : 'user',
             content: (m.text || '').substring(0, 2000),
@@ -1427,7 +1429,7 @@ async function handleAIChatStream(request, env, origin) {
             messages.push({ role: 'user', content: message });
           }
           const text = await callGroqOrCerebras(env, messages, GROQ_SYSTEM_PROMPT + '\n\n' + systemExtra);
-          send({ t: 'answer', text: sanitizeAIResponse(text), provider: _lastProviderUsed, searched: !!researchBlock, sources: [] });
+          send({ t: 'answer', text: sanitizeAIResponse(text), provider: _lastProviderUsed, searched: false, sources: [] });
         }
       } catch (e) {
         console.error('AI chat stream error:', e);
@@ -1444,6 +1446,38 @@ async function handleAIChatStream(request, env, origin) {
       ...corsHeaders(origin),
     },
   });
+}
+
+// —— AI-chosen chat title (owner directive 2026-09-26) ————————————
+// The site asks for a session title after the first AI reply; the backend
+// runs a tiny LLM call that names the chat in 2-6 words.
+async function handleChatTitle(request, env, origin) {
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const sess = await getSession(env, cookies);
+  if (!sess) return json({ error: 'Not authenticated' }, 401, origin);
+  const rl = rateCheck(sess.user?.email || 'anon', 'title', 30);
+  if (!rl.allowed) return json({ error: 'Too many requests' }, 429, origin);
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'invalid JSON' }, 400, origin); }
+  const message = String(body.message || '').slice(0, 2000);
+  if (!message) return json({ error: 'No message provided' }, 400, origin);
+  const base = (env.BACKEND_URL || '').replace(/\/+$/, '');
+  if (!base) return json({ error: 'Title service unavailable' }, 503, origin);
+  try {
+    const r = await fetch(base + '/ai/title', {
+      method: 'POST',
+      headers: { 'X-Backend-Key': env.BACKEND_KEY || '', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, reply: String(body.reply || '').slice(0, 2000), agent: 'chat-title' }),
+      signal: AbortSignal.timeout(25000),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok || typeof d.title !== 'string') {
+      return json({ error: d.error || 'title failed' }, 502, origin);
+    }
+    return json({ ok: true, title: d.title }, 200, origin);
+  } catch (e) {
+    return json({ error: e.message || 'title failed' }, 502, origin);
+  }
 }
 
 // —— PDF FILE handler (real PDF binary via backend renderer) ————————————
@@ -1590,15 +1624,13 @@ async function handleAIChat(request, env, origin) {
 
   // —— FALLBACK: worker-direct (backend offline) ——————
   try {
-    // Research if the backend search engine is still reachable; non-fatal.
-    let researchBlock = '';
-    try { if (needsResearch(message)) researchBlock = await backendResearch(env, message); } catch (e) {}
-
+    // No research in fallback (owner directive: the AI-planner runs on the
+    // backend; when it's down we answer directly from model knowledge).
     const messages = (history || []).slice(-30).map(m => ({
       role: m.role === 'ai' ? 'assistant' : 'user',
       content: (m.text || '').substring(0, 2000),
     }));
-    const systemExtra = `[User Context: role=${actualRole}${actualIsAdmin ? ' (admin)' : ''}${actualRole === 'student' && studentClass ? `, class=${studentClass}` : ''}, email=${userEmail}]` + (researchBlock ? `\n\n${researchBlock}` : '');
+    const systemExtra = `[User Context: role=${actualRole}${actualIsAdmin ? ' (admin)' : ''}${actualRole === 'student' && studentClass ? `, class=${studentClass}` : ''}, email=${userEmail}]`;
     if (safeImages.length > 0) {
       messages.push({
         role: 'user',
@@ -1624,7 +1656,7 @@ async function handleAIChat(request, env, origin) {
     return json({
       response: aiResponse,
       model: _lastProviderUsed,
-      searched: !!researchBlock,
+      searched: false,
       quotaUsed: 0,
       quotaLimit: userRole === 'student' ? parseInt(env.STUDENT_GEMINI_LIMIT || '30') : Infinity,
       quotaExhausted: false,
@@ -2919,10 +2951,10 @@ async function handleLiveChatAction(request, env, origin) {
 // Bump these when releasing a new APK — the app checks this on every launch.
 // apkUrl must point at the publicly-hosted APK on the Pages site.
 const APP_LATEST = {
-  versionCode: 1,
-  versionName: '1.0.0',
-  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.0.0.apk',
-  notes: "Xavier's Drive v1.0.0 — first build: logo, name, update checker, blank page."
+  versionCode: 2,
+  versionName: '2.0.0',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive2.0.0.apk',
+  notes: "Xavier's Drive v2.0.0 — full WebView app (the site now runs inside), new sparkle logo, animated splash, back-button navigation, in-app downloads."
 };
 
 function handleAppVersion(origin) {
@@ -2964,6 +2996,7 @@ export default {
     // AI routes
     if (path === '/api/chat' && request.method === 'POST') return handleAIChat(request, env, origin);
     if (path === '/api/chat/stream' && request.method === 'POST') return handleAIChatStream(request, env, origin);
+    if (path === '/api/chat/title' && request.method === 'POST') return handleChatTitle(request, env, origin);
     if (path === '/api/quota' && request.method === 'GET') return handleQuota(request, env, origin);
     if (path === '/api/pdf' && request.method === 'POST') return handlePDF(request, env, origin);
     if (path === '/api/pdf/file' && request.method === 'POST') return handlePDFFile(request, env, origin);
