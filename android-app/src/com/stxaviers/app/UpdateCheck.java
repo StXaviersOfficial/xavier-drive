@@ -10,8 +10,8 @@ import org.json.JSONObject;
 /** Checks the worker's /api/app/version manifest for updates. */
 public final class UpdateCheck {
 
-    public static final int CURRENT_VERSION_CODE = 2;
-    public static final String CURRENT_VERSION_NAME = "2.0.0";
+    public static final int CURRENT_VERSION_CODE = 3;
+    public static final String CURRENT_VERSION_NAME = "1.0.1";
     private static final String ENDPOINT = "https://stxaviers-auth.quackeditzofficial.workers.dev/api/app/version";
     private static final int TIMEOUT_MS = 6000;
 
