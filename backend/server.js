@@ -573,18 +573,42 @@ function genSearchQueries(message) {
   return queries.slice(0, 2);
 }
 
+// Smart search gating (owner directive 2026-09-26): the search engine runs
+// for basically every real message ("too often") but NOT for greetings /
+// tiny acknowledgements like "Hi" or emoji-only messages. Conservative: only
+// skip when the WHOLE message matches a greeting/ack pattern.
+function needsResearch(message) {
+  const t = String(message || '').trim();
+  if (!t) return false;
+  if (t.length <= 8 && !/[a-z0-9]/i.test(t)) return false;               // emoji/symbol only
+  if (t.length < 34) {
+    // strip emojis/pictographs so "Hi 👁👄👁" tests as "hi"
+    const low = t.toLowerCase().replace(/[!.,~\s]+$/, '').replace(/[^\p{L}\p{N}\s'?!.,]/gu, '').trim();
+    if (!low) return false;                                              // nothing but emoji left
+    if (/^(hi+|hey+|hello+|yo+|sup|hola|namaste|greetings|good\s*(morning|afternoon|evening|night|day)|gm|gn|thanks+|thank\s*you+|thx+|ty|tysm|ok+|okay+|k+|cool|nice|great|awesome|good|fine|perfect|lol|lmao|haha+|hehe+|bruh|bye|goodbye|see\s*ya|later|yes+|yeah+|yep+|no+|nah+|nope+|wow+|omg+|sad|happy)[\s?!.]*$/i.test(low)) return false;
+    if (/^(what'?s\s*up|wassup|wsp|wsup|how\s*(are|r)\s*(you|u)|hru|you\s*good|u\s*good)[\s?!.]*$/i.test(low)) return false;
+    if (/^(who|what)'?s\s*(this|there|up)[\s?!.]*$/i.test(low)) return false;
+  }
+  return true;
+}
+
 async function chatOrchestrate(body, onStep) {
   const message = String(body.message || '').slice(0, 4000);
   if (!message) throw new Error('message required');
   const agent = String(body.agent || 'site-chat').replace(/[^a-zA-Z0-9_-]/g, '');
   const t0 = Date.now();
 
-  // 1) ALWAYS research first (owner directive). Non-fatal.
+  // 1) Research first (owner directive: search for every real question).
+  // Gated by needsResearch(): greetings/acks skip the engine. Non-fatal.
   let pack = null;
-  try {
-    const queries = await genSearchQueries(message);
-    pack = await researchPack(queries, 2, agent, onStep);
-  } catch (e) { agentLog(agent, 'research failed (answering without): ' + e.message); }
+  if (needsResearch(message)) {
+    try {
+      const queries = await genSearchQueries(message);
+      pack = await researchPack(queries, 2, agent, onStep);
+    } catch (e) { agentLog(agent, 'research failed (answering without): ' + e.message); }
+  } else {
+    agentLog(agent, 'research skipped (greeting/trivial message): ' + message.slice(0, 40));
+  }
 
   // 2) Compose messages and answer via the worker key-proxy
   const history = Array.isArray(body.history) ? body.history.slice(-30).map(m => ({
@@ -642,7 +666,7 @@ const server = http.createServer(async (req, res) => {
       try { const s = fs.statfsSync ? fs.statfsSync(ROOT) : null; if (s) diskFree = s.bsize * s.bavail; } catch (e) {}
       return send(200, JSON.stringify({
         ok: true, uptime: Math.round(process.uptime()), rssMB: Math.round(process.memoryUsage().rss / 1048576),
-        node: process.version, server: 'xavierdrive-backend', version: '2.2.0',
+        node: process.version, server: 'xavierdrive-backend', version: '2.3.0',
         storage: { root: '/storage/XavierDrive', usedBytes: dirSize(ROOT), files: buildTree(ROOT, '/', 0) ? countFiles(buildTree(ROOT, '/', 0)) : 0 },
       }));
     }
@@ -908,6 +932,6 @@ function countFiles(node) {
 
 ensureDir(ROOT);
 ensureDir(AI_ROOT);
-server.listen(PORT, '0.0.0.0', () => LOG(`XavierDrive backend v2.2.0 on 0.0.0.0:${PORT} (node ${process.version}, pid ${process.pid}) storage=${ROOT} [AI: chat engine + terminal + search + research + pdf] worker-proxy=${WORKER_URL}`));
+server.listen(PORT, '0.0.0.0', () => LOG(`XavierDrive backend v2.3.0 on 0.0.0.0:${PORT} (node ${process.version}, pid ${process.pid}) storage=${ROOT} [AI: chat engine + terminal + search + research + pdf + smart search gating] worker-proxy=${WORKER_URL}`));
 process.on('uncaughtException', (e) => LOG(`uncaught: ${e.stack}`));
 process.on('unhandledRejection', (e) => LOG(`unhandled: ${e}`));
