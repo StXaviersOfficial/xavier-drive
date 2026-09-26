@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Xavier\'s Drive</string>
+    <string name="checking_updates">Checking for updates…</string>
+    <string name="update_available">Update available</string>
+    <string name="update_message">Xavier\'s Drive %s is ready with a smoother experience. Update now?</string>
+    <string name="download">Download</string>
+    <string name="not_now">Not now</string>
+    <string name="version_label">v2.0.0 · St. Xavier\'s School, Jaipur</string>
+    <string name="offline_title">You\'re offline</string>
+    <string name="offline_msg">Check your internet connection and try again.</string>
+    <string name="retry">Retry</string>
+    <string name="exit_hint">Press back again to exit</string>
+</resources>
