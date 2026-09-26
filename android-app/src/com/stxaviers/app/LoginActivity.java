@@ -94,18 +94,16 @@ public class LoginActivity extends Activity {
     private void wireCard() {
         final View card = findViewById(R.id.login_card);
         final View wrap = findViewById(R.id.login_scroll);
+        final StarfieldView stars = (StarfieldView) findViewById(R.id.login_stars);
         wrap.setOnTouchListener((v, e) -> {
             if (!fx) return false;
             switch (e.getAction()) {
                 case MotionEvent.ACTION_MOVE:
                 case MotionEvent.ACTION_DOWN: {
-                    float cx = card.getX() + card.getWidth() / 2f;
-                    float cy = card.getY() + card.getHeight() / 2f;
-                    // card center in scroll coords (scrollY offset matters)
                     int[] loc = new int[2];
                     card.getLocationOnScreen(loc);
-                    cx = loc[0] + card.getWidth() / 2f;
-                    cy = loc[1] + card.getHeight() / 2f;
+                    float cx = loc[0] + card.getWidth() / 2f;
+                    float cy = loc[1] + card.getHeight() / 2f;
                     float dx = (e.getRawX() - cx) / (card.getWidth() / 2f);
                     float dy = (e.getRawY() - cy) / (card.getHeight() / 2f);
                     dx = Math.max(-1f, Math.min(1f, dx));
@@ -113,6 +111,8 @@ public class LoginActivity extends Activity {
                     card.animate().cancel();
                     card.setRotationY(dx * 9f);
                     card.setRotationX(-dy * 9f);
+                    // star parallax follows the same finger
+                    stars.setPointer(e.getRawX(), e.getRawY());
                     break;
                 }
                 case MotionEvent.ACTION_UP:
@@ -121,6 +121,9 @@ public class LoginActivity extends Activity {
                             .setDuration(450)
                             .setInterpolator(new OvershootInterpolator(2f))
                             .start();
+                    stars.setPointer(
+                            getResources().getDisplayMetrics().widthPixels / 2f,
+                            getResources().getDisplayMetrics().heightPixels / 2f);
                     break;
             }
             return false; // let the scroll happen too
@@ -142,11 +145,10 @@ public class LoginActivity extends Activity {
                         btn.getLocationOnScreen(loc);
                         float dx = (e.getRawX() - (loc[0] + btn.getWidth() / 2f))
                                 / btn.getWidth();
-                        float dy = (e.getRawY() - (loc[1] + btn.getHeight() / 2f))
-                                / btn.getHeight();
                         dx = Math.max(-0.5f, Math.min(0.5f, dx));
-                        dy = Math.max(-0.5f, Math.min(0.5f, dy));
-                        btn.animate().translationX(dx * 28f).translationY(dy * 20f)
+                        // horizontal-only magnet: the wrap clips vertically,
+                        // and sideways pull reads just as magnetic
+                        btn.animate().translationX(dx * 26f)
                                 .scaleX(1.03f).scaleY(1.03f)
                                 .setDuration(90).start();
                         break;
