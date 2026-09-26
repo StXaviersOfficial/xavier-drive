@@ -1,11 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- LIGHT palette (day). values-night/ overrides for dark. -->
 <resources>
-    <color name="accent">#4f8ef7</color>
-    <color name="accent2">#a64ff7</color>
+    <color name="accent">#2f6bff</color>
+    <color name="accent2">#7a3cf5</color>
     <color name="accent3">#f74f7a</color>
-    <color name="ink">#f2f5ff</color>
-    <color name="muted">#8b93b8</color>
-    <color name="bg_deep">#070d1f</color>
-    <color name="bg_mid">#141b3f</color>
+    <color name="accent4">#f7c44f</color>
+    <color name="cyan">#0ea5c9</color>
+
+    <color name="ink">#171d3a</color>
+    <color name="muted">#5a628a</color>
+    <color name="bg_deep">#eef2fb</color>
+    <color name="bg_mid">#dde7fb</color>
     <color name="white">#ffffff</color>
+
+    <!-- login -->
+    <color name="login_bg">#eef2fb</color>
+    <color name="login_ink">#171d3a</color>
+    <color name="login_muted">#5a628a</color>
+    <color name="login_card">#ccffffff</color>
+    <color name="login_card_border">#334f8ef7</color>
+    <color name="login_chip_bg">#b3ffffff</color>
+    <color name="login_chip_stroke">#22273619</color>
+    <color name="login_chip_ink">#33415e</color>
+    <color name="gbtn_bg">#ffffff</color>
+    <color name="gbtn_ink">#1a1c2c</color>
+    <color name="gbtn_border">#29000000</color>
+    <color name="shine_color">#66ffffff</color>
+    <color name="cta_start">#2f6bff</color>
+    <color name="cta_end">#7a3cf5</color>
+    <color name="cta_ink">#ffffff</color>
+    <color name="track_bg">#1f27365e</color>
+    <color name="continue_ink">#2f6bff</color>
+    <color name="update_panel">#e6f0fc</color>
+    <color name="orb1">#7db4ff</color>
+    <color name="orb2">#c9a6f7</color>
+    <color name="orb3">#ffa6bd</color>
+    <color name="orb4">#7de9ff</color>
+    <color name="star_col">#4f8ef7</color>
+    <color name="shoot_col">#2f6bff</color>
+    <color name="ring_a">#4f8ef7</color>
+    <color name="ring_b">#f74f7a</color>
+    <color name="status_scrim">#99eef2fb</color>
 </resources>
