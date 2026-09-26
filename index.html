@@ -5549,34 +5549,40 @@ function downloadMsgZip(mid){
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   toast('🗜️ ZIP with '+files.length+' files downloaded!','ok');
 }
-function downloadPdfArtifact(mid){
+async function downloadPdfArtifact(mid){
   // one click = download. Blob lookup order: memory -> IndexedDB -> the
   // worker re-renders the identical PDF server-side (invisible to the
   // user), then it downloads. There is never a dead "regenerate" state.
-  const name=(_pdfBlobs[mid+'_name']||'document.pdf');
+  let name=_pdfBlobs[mid+'_name'];
+  if(!name){
+    const stored=await pdfBlobGet(mid+'_name');
+    if(stored&&typeof stored==='string'){name=stored;_pdfBlobs[mid+'_name']=stored;}
+  }
   const go=(blob)=>{
     const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);a.download=name;a.click();
+    a.href=URL.createObjectURL(blob);a.download=name||'document.pdf';a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),4000);
     toast('📄 PDF downloaded!','ok');
   };
   const mem=_pdfBlobs[mid];
   if(mem){go(mem);return;}
-  pdfBlobGet(mid).then(b=>{
-    if(b){go(b);return;}
-    const meta=_pdfPrompts[mid];
-    if(!meta){toast('PDF unavailable — ask the AI to make it again','err');return;}
-    toast('Preparing your PDF…','ok');
-    fetch(WORKER+'/api/pdf/file',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({prompt:meta.prompt,title:meta.title})})
-      .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
-      .then(b=>{
-        _pdfBlobs[mid]=b;
-        _pdfBlobs[mid+'_name']=name;
-        pdfBlobSet(mid,b,name);
-        go(b);
-      })
-      .catch(e=>toast('PDF download failed: '+e.message,'err'));
-  });
+  const fromIdb=await pdfBlobGet(mid);
+  if(fromIdb){go(fromIdb);return;}
+  const meta=_pdfPrompts[mid];
+  if(!meta){toast('PDF unavailable — ask the AI to make it again','err');return;}
+  if(!name){
+    name=((meta.title||'document').replace(/[^a-z0-9]+/gi,'_').slice(0,40)||'document')+'.pdf';
+    _pdfBlobs[mid+'_name']=name;
+  }
+  toast('Preparing your PDF…','ok');
+  try{
+    const r=await fetch(WORKER+'/api/pdf/file',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({prompt:meta.prompt,title:meta.title})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const b=await r.blob();
+    _pdfBlobs[mid]=b;
+    pdfBlobSet(mid,b,name);
+    go(b);
+  }catch(e){toast('PDF download failed: '+e.message,'err')}
 }
 const _pdfPrompts={}; // mid -> {prompt,title}
 
