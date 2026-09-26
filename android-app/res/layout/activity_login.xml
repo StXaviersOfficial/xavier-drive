@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.stxaviers.app.AuroraView
+        android:id="@+id/login_aurora"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <com.stxaviers.app.StarfieldView
+        android:id="@+id/login_stars"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <ScrollView
+        android:id="@+id/login_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingLeft="24dp"
+            android:paddingRight="24dp"
+            android:paddingTop="40dp"
+            android:paddingBottom="32dp">
+
+            <!-- ── logo hero ── -->
+            <FrameLayout
+                android:id="@+id/logo_wrap"
+                android:layout_width="236dp"
+                android:layout_height="236dp"
+                android:layout_marginTop="8dp">
+
+                <View
+                    android:id="@+id/login_glow"
+                    android:layout_width="206dp"
+                    android:layout_height="206dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/splash_glow" />
+
+                <View
+                    android:id="@+id/login_ring1"
+                    android:layout_width="192dp"
+                    android:layout_height="192dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/ring1" />
+
+                <View
+                    android:id="@+id/login_ring2"
+                    android:layout_width="220dp"
+                    android:layout_height="220dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/ring2" />
+
+                <View
+                    android:id="@+id/orbit_dot1"
+                    android:layout_width="9dp"
+                    android:layout_height="9dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/orbit_dot" />
+
+                <View
+                    android:id="@+id/orbit_dot2"
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/orbit_dot2" />
+
+                <ImageView
+                    android:id="@+id/login_logo"
+                    android:layout_width="152dp"
+                    android:layout_height="152dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/login_logo"
+                    android:contentDescription="@string/app_name" />
+            </FrameLayout>
+
+            <!-- ── kinetic title (letters injected by code) ── -->
+            <LinearLayout
+                android:id="@+id/title_row1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="14dp" />
+
+            <LinearLayout
+                android:id="@+id/title_row2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+
+            <TextView
+                android:id="@+id/login_sub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="13sp"
+                android:letterSpacing="0.04"
+                android:gravity="center"
+                android:textColor="@color/login_muted"
+                android:text="@string/login_sub" />
+
+            <!-- ── floating feature chips ── -->
+            <LinearLayout
+                android:id="@+id/chips_row"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:id="@+id/chip1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/chip_bg"
+                    android:paddingLeft="14dp" android:paddingRight="14dp"
+                    android:paddingTop="8dp" android:paddingBottom="8dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/login_chip_ink"
+                    android:text="@string/login_chip_ai" />
+
+                <TextView
+                    android:id="@+id/chip2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="10dp"
+                    android:background="@drawable/chip_bg"
+                    android:paddingLeft="14dp" android:paddingRight="14dp"
+                    android:paddingTop="8dp" android:paddingBottom="8dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/login_chip_ink"
+                    android:text="@string/login_chip_drive" />
+
+                <TextView
+                    android:id="@+id/chip3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="10dp"
+                    android:background="@drawable/chip_bg"
+                    android:paddingLeft="14dp" android:paddingRight="14dp"
+                    android:paddingTop="8dp" android:paddingBottom="8dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/login_chip_ink"
+                    android:text="@string/login_chip_live" />
+            </LinearLayout>
+
+            <!-- ── glass card with rotating conic border ── -->
+            <com.stxaviers.app.GlowCardView
+                android:id="@+id/login_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:padding="30dp">
+
+                    <TextView
+                        android:id="@+id/login_welcome"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/login_ink"
+                        android:text="@string/login_welcome" />
+
+                    <TextView
+                        android:id="@+id/login_hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="4dp"
+                        android:gravity="center"
+                        android:textColor="@color/login_muted"
+                        android:text="@string/login_hint" />
+
+                    <!-- google button + shine overlay -->
+                    <FrameLayout
+                        android:id="@+id/gbtn_wrap"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:clipChildren="false"
+                        android:clipToPadding="false">
+
+                        <Button
+                            android:id="@+id/gbtn"
+                            android:layout_width="match_parent"
+                            android:layout_height="54dp"
+                            android:background="@drawable/gbtn_bg"
+                            android:stateListAnimator="@null"
+                            android:drawableLeft="@drawable/ic_google"
+                            android:drawablePadding="10dp"
+                            android:paddingLeft="18dp"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textAllCaps="false"
+                            android:textColor="@color/gbtn_ink"
+                            android:text="@string/login_google" />
+
+                        <View
+                            android:id="@+id/gbtn_shine"
+                            android:layout_width="70dp"
+                            android:layout_height="match_parent"
+                            android:layout_gravity="center_vertical|start"
+                            android:background="@drawable/shine_overlay"
+                            android:rotation="-14" />
+                    </FrameLayout>
+
+                    <TextView
+                        android:id="@+id/login_note"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:textSize="11sp"
+                        android:lineSpacingExtra="3dp"
+                        android:gravity="center"
+                        android:textColor="@color/login_muted"
+                        android:text="@string/login_note" />
+                </LinearLayout>
+            </com.stxaviers.app.GlowCardView>
+
+            <!-- design-only era: jump into the portal -->
+            <TextView
+                android:id="@+id/continue_link"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:padding="10dp"
+                android:background="@drawable/text_btn_bg"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/continue_ink"
+                android:text="@string/login_continue" />
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>
