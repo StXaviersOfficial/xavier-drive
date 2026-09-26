@@ -535,10 +535,58 @@ async function researchPack(queries, depth, agent, onStep) {
   return { queries: perQuery, sources };
 }
 
-// —— AI CHAT ORCHESTRATION (site chat engine, v2.2) ————————————
-// The backend owns the full chat pipeline: research the question FIRST
-// (owner directive: ALWAYS search the web before answering), then answer
-// via the worker key-proxy (provider keys never leave Cloudflare).
+// —— AI CHAT ORCHESTRATION (site chat engine, v2.4) ————————————
+// NEW (owner directive 2026-09-26): the AI ITSELF decides whether to run a web
+// search — a fast planner LLM pass inspects the message and returns
+// {search, queries[]}. No more automatic search on every real message (that
+// fired even for "create a pdf/file" requests that need zero web research).
+// The planner answer arrives through the same worker key-proxy as everything
+// else; if it fails we fall back to the needsResearch() heuristic so chat never
+// breaks.
+
+const RESEARCH_PLANNER_PROMPT = `You are the TOOL-USE PLANNER for a school AI assistant. Decide if the user's LATEST message needs a LIVE WEB SEARCH before it can be answered well.
+
+RUN SEARCH (search=true) ONLY when the answer depends on external/current knowledge: news, events, scores, prices, exam dates/results, statistics, "who is/what is/when did" facts, verifying claims, or anything a language model might not reliably know.
+
+DO NOT SEARCH (search=false) for: greetings and small talk; thanks/acks; creative writing (essays, stories, letters, speeches); notes/worksheet/PDF/document/file creation; code help; pure math; grammar/translation; summaries of text the user provided or attached; image generation requests; opinions or advice; and follow-ups answerable from the conversation.
+
+If search=true, also write 1-2 short search queries (max 8 words each) — the exact queries a search engine should run.
+
+Reply with ONLY compact JSON, no markdown fence, no commentary:
+{"search":true,"queries":["query one","query two"]}
+or
+{"search":false}`;
+
+function parsePlannerJson(text) {
+  const t = String(text || '').replace(/```(?:json)?/gi, '').trim();
+  const m = t.match(/\{[\s\S]*?\}/);
+  if (!m) return null;
+  try {
+    const d = JSON.parse(m[0]);
+    const search = d.search === true || d.search === 'true';
+    let queries = Array.isArray(d.queries) ? d.queries.map(q => String(q).replace(/["'`]/g, '').trim()).filter(q => q.length > 1).slice(0, 2) : [];
+    return { search, queries };
+  } catch (e) { return null; }
+}
+
+// Fast planner pass: the AI decides if/what to search. Timeout-guarded;
+// any failure -> null (caller falls back to the heuristic).
+async function planResearch(message, history, agent) {
+  const tail = (Array.isArray(history) ? history.slice(-4) : []).map(m => ({ role: m.role, content: String(m.content || '').slice(0, 600) }));
+  const probe = Promise.race([
+    workerAiCall({
+      messages: [...tail, { role: 'user', content: String(message).slice(0, 2000) }],
+      systemExtra: RESEARCH_PLANNER_PROMPT,
+      maxTokens: 150, user: 'research-planner',
+    }),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('planner timeout')), 14000)),
+  ]);
+  const ai = await probe;
+  const plan = parsePlannerJson(ai.text);
+  if (!plan) throw new Error('planner gave no JSON');
+  agentLog(agent, `planner: search=${plan.search}${plan.search ? ' queries=[' + plan.queries.join(' | ') + ']' : ''} (via ${ai.provider})`);
+  return plan;
+}
 
 function buildResearchBlock(pack) {
   const lines = [];
@@ -598,25 +646,37 @@ async function chatOrchestrate(body, onStep) {
   const agent = String(body.agent || 'site-chat').replace(/[^a-zA-Z0-9_-]/g, '');
   const t0 = Date.now();
 
-  // 1) Research first (owner directive: search for every real question).
-  // Gated by needsResearch(): greetings/acks skip the engine. Non-fatal.
-  let pack = null;
-  if (needsResearch(message)) {
-    try {
-      const queries = await genSearchQueries(message);
-      pack = await researchPack(queries, 2, agent, onStep);
-    } catch (e) { agentLog(agent, 'research failed (answering without): ' + e.message); }
-  } else {
-    agentLog(agent, 'research skipped (greeting/trivial message): ' + message.slice(0, 40));
-  }
-
-  // 2) Compose messages and answer via the worker key-proxy
   const history = Array.isArray(body.history) ? body.history.slice(-30).map(m => ({
     role: m.role === 'assistant' || m.role === 'ai' ? 'assistant' : 'user',
     content: String(m.text || m.content || '').slice(0, 2000),
   })).filter(m => m.content) : [];
 
+  // 1) THE AI DECIDES whether to research (owner directive 2026-09-26 v2).
+  //    Planner LLM pass -> {search, queries}. Heuristic fallback on failure.
+  let plan = null;
+  if (needsResearch(message)) {           // pure greetings never even plan
+    if (onStep) onStep({ icon: '🧠', label: 'Understanding your request', detail: 'deciding what you need' });
+    try { plan = await planResearch(message, history, agent); }
+    catch (e) { agentLog(agent, 'planner failed, heuristic fallback: ' + e.message); }
+  }
+  let pack = null;
+  if (plan && plan.search) {
+    try {
+      const queries = plan.queries.length ? plan.queries : await genSearchQueries(message);
+      pack = await researchPack(queries, 2, agent, onStep);
+    } catch (e) { agentLog(agent, 'research failed (answering without): ' + e.message); }
+  } else if (!plan && needsResearch(message)) {
+    // planner unavailable -> legacy behaviour (search real questions)
+    try {
+      const queries = await genSearchQueries(message);
+      pack = await researchPack(queries, 2, agent, onStep);
+    } catch (e) { agentLog(agent, 'research failed (answering without): ' + e.message); }
+  } else {
+    agentLog(agent, 'research skipped — AI decided no search needed: ' + message.slice(0, 60));
+  }
+
   const roleCtx = `[User Context: role=${body.role || 'student'}${body.isAdmin ? ' (admin)' : ''}${(body.role || 'student') === 'student' && body.class ? `, class=${body.class}` : ''}, email=${body.email || 'unknown'}]`;
+
   const researchBlock = pack ? buildResearchBlock(pack) : '';
   const systemExtra = roleCtx + (researchBlock ? '\n\n' + researchBlock : '');
 
@@ -666,7 +726,7 @@ const server = http.createServer(async (req, res) => {
       try { const s = fs.statfsSync ? fs.statfsSync(ROOT) : null; if (s) diskFree = s.bsize * s.bavail; } catch (e) {}
       return send(200, JSON.stringify({
         ok: true, uptime: Math.round(process.uptime()), rssMB: Math.round(process.memoryUsage().rss / 1048576),
-        node: process.version, server: 'xavierdrive-backend', version: '2.3.0',
+        node: process.version, server: 'xavierdrive-backend', version: '2.4.0',
         storage: { root: '/storage/XavierDrive', usedBytes: dirSize(ROOT), files: buildTree(ROOT, '/', 0) ? countFiles(buildTree(ROOT, '/', 0)) : 0 },
       }));
     }
@@ -818,6 +878,36 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    if (p === '/ai/title' && req.method === 'POST') {
+      // AI-chosen chat title (owner directive 2026-09-26): the LLM reads the
+      // first user message + first reply and names the chat in 2-6 words.
+      const raw = await readBody(req, 1024 * 1024);
+      let body; try { body = JSON.parse(raw.toString('utf8')); } catch (e) { return send(400, JSON.stringify({ error: 'invalid JSON' })); }
+      const message = String(body.message || '').slice(0, 2000);
+      const reply = String(body.reply || '').slice(0, 2000);
+      if (!message) return send(400, JSON.stringify({ error: 'message required' }));
+      const agent = agentLog(body.agent || 'chat-title', 'title request');
+      const t0 = Date.now();
+      const TITLE_PROMPT = `You name chat conversations for a school app. Read the user's first message (and the assistant reply for context). Reply with ONLY the chat title: 2-6 words, Title Case, no quotes, no trailing period, no emoji. Capture the concrete topic — e.g. "Cricket World Cup Winners", "Class 10 Science Notes", "Formal Letter Format". Never reply with generic words alone like "Chat", "Question", "Help".`;
+      try {
+        const ai = await workerAiCall({
+          messages: [{ role: 'user', content: message }],
+          systemExtra: TITLE_PROMPT + (reply ? `\n\nASSISTANT REPLY (context):\n${reply.slice(0, 1200)}` : ''),
+          maxTokens: 60, user: 'chat-title',
+        });
+        let title = String(ai.text || '').replace(/[\r\n]+/, ' ').replace(/^["'`\s]+|["'`\s.]+$/g, '').slice(0, 48).trim();
+        if (!title || title.length < 2) {
+          title = message.trim().split(/\s+/).slice(0, 5).join(' ').slice(0, 40) || 'New Chat';
+        }
+        agentLog(agent, `title: "${title}" (${Date.now() - t0}ms via ${ai.provider})`);
+        return send(200, JSON.stringify({ ok: true, title }));
+      } catch (e) {
+        LOG(`AI title FAILED: ${e.message}`);
+        const fb = message.trim().split(/\s+/).slice(0, 5).join(' ').slice(0, 40) || 'New Chat';
+        return send(200, JSON.stringify({ ok: true, title: fb, fallback: true }));
+      }
+    }
+
     if (p === '/ai/chat' && req.method === 'POST') {
       const raw = await readBody(req, 12 * 1024 * 1024);
       let body; try { body = JSON.parse(raw.toString('utf8')); } catch (e) { return send(400, JSON.stringify({ error: 'invalid JSON' })); }
@@ -917,7 +1007,7 @@ const server = http.createServer(async (req, res) => {
       return send(502, JSON.stringify({ ok: false, error: 'all relay keys/models failed: ' + lastErr }));
     }
 
-    return send(404, JSON.stringify({ error: 'not found', endpoints: ['GET /health', 'POST /pdf', 'GET /files', 'GET /files/tree', 'GET /files/download', 'PUT /files/upload', 'POST /files/mkdir', 'POST /files/delete', 'POST /files/move', 'POST /exec', 'GET /ai/sessions', 'GET /ai/log', 'POST /ai/search', 'POST /ai/fetch', 'POST /ai/research', 'POST /ai/chat', 'POST /ai/chat/stream', 'POST /ai/pdf', 'POST /ai/relay/gemini'] }));
+    return send(404, JSON.stringify({ error: 'not found', endpoints: ['GET /health', 'POST /pdf', 'GET /files', 'GET /files/tree', 'GET /files/download', 'PUT /files/upload', 'POST /files/mkdir', 'POST /files/delete', 'POST /files/move', 'POST /exec', 'GET /ai/sessions', 'GET /ai/log', 'POST /ai/search', 'POST /ai/fetch', 'POST /ai/research', 'POST /ai/chat', 'POST /ai/chat/stream', 'POST /ai/title', 'POST /ai/pdf', 'POST /ai/relay/gemini'] }));
   } catch (e) {
     LOG(`ERROR ${req.method} ${p}: ${e.stack}`);
     return send(500, JSON.stringify({ error: e.message }));
@@ -932,6 +1022,6 @@ function countFiles(node) {
 
 ensureDir(ROOT);
 ensureDir(AI_ROOT);
-server.listen(PORT, '0.0.0.0', () => LOG(`XavierDrive backend v2.3.0 on 0.0.0.0:${PORT} (node ${process.version}, pid ${process.pid}) storage=${ROOT} [AI: chat engine + terminal + search + research + pdf + smart search gating] worker-proxy=${WORKER_URL}`));
+server.listen(PORT, '0.0.0.0', () => LOG(`XavierDrive backend v2.4.0 on 0.0.0.0:${PORT} (node ${process.version}, pid ${process.pid}) storage=${ROOT} [AI: chat engine + terminal + search + AI-planned research + AI chat titles + pdf] worker-proxy=${WORKER_URL}`));
 process.on('uncaughtException', (e) => LOG(`uncaught: ${e.stack}`));
 process.on('unhandledRejection', (e) => LOG(`unhandled: ${e}`));
