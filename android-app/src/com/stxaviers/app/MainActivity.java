@@ -25,10 +25,9 @@ import android.widget.Toast;
 
 /**
  * Xavier's Drive main shell: the full school portal (stxaviers.pages.dev)
- * running inside a properly-configured WebView.
- *
- * v2.0.0 — this replaces the v1 placeholder that showed a BLANK page (the old
- * build shipped an empty FrameLayout with no WebView at all).
+ * running inside a properly-configured WebView. Reached from the native
+ * login page ("Continue to app") while the Google sign-in system is being
+ * wired up.
  */
 public class MainActivity extends Activity {
 
