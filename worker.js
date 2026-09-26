@@ -2951,10 +2951,10 @@ async function handleLiveChatAction(request, env, origin) {
 // Bump these when releasing a new APK — the app checks this on every launch.
 // apkUrl must point at the publicly-hosted APK on the Pages site.
 const APP_LATEST = {
-  versionCode: 2,
-  versionName: '2.0.0',
-  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive2.0.0.apk',
-  notes: "Xavier's Drive v2.0.0 — full WebView app (the site now runs inside), new sparkle logo, animated splash, back-button navigation, in-app downloads."
+  versionCode: 3,
+  versionName: '1.0.1',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.0.1.apk',
+  notes: "Xavier's Drive v1.0.1 — new XD emblem branding everywhere, in-app updater with live progress, speed and one-tap install, all-new animated login page (dark + light, auto-themed), smoother portal."
 };
 
 function handleAppVersion(origin) {
