@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.stxaviers.app.AnimatedGradientView
+        android:id="@+id/splash_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:gravity="center"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <FrameLayout
+            android:layout_width="240dp"
+            android:layout_height="240dp">
+
+            <View
+                android:id="@+id/logo_glow"
+                android:layout_width="210dp"
+                android:layout_height="210dp"
+                android:layout_gravity="center"
+                android:background="@drawable/splash_glow" />
+
+            <View
+                android:id="@+id/ring1"
+                android:layout_width="196dp"
+                android:layout_height="196dp"
+                android:layout_gravity="center"
+                android:background="@drawable/ring1" />
+
+            <View
+                android:id="@+id/ring2"
+                android:layout_width="224dp"
+                android:layout_height="224dp"
+                android:layout_gravity="center"
+                android:background="@drawable/ring2" />
+
+            <ImageView
+                android:id="@+id/splash_logo"
+                android:layout_width="158dp"
+                android:layout_height="158dp"
+                android:layout_gravity="center"
+                android:src="@drawable/splash_logo"
+                android:contentDescription="@string/app_name" />
+        </FrameLayout>
+
+        <TextView
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/ink"
+            android:id="@+id/splash_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/app_name"
+            android:letterSpacing="0.04"
+            android:shadowColor="#804f8ef7"
+            android:shadowDx="0" android:shadowDy="0" android:shadowRadius="18" />
+
+        <TextView
+            android:textSize="13sp"
+            android:textColor="@color/muted"
+            android:id="@+id/splash_sub"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:letterSpacing="0.08"
+            android:text="ST. XAVIER'S SCHOOL · JAIPUR" />
+
+        <ProgressBar
+            android:layout_width="150dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="34dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/accent"
+            style="?android:attr/progressBarStyleHorizontal" />
+
+        <TextView
+            android:textSize="12sp"
+            android:textColor="@color/muted"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="@string/checking_updates" />
+    </LinearLayout>
+
+    <TextView
+        android:textSize="11sp"
+        android:textColor="#565e85"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:text="@string/version_label" />
+</FrameLayout>
