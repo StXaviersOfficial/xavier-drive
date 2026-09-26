@@ -16,7 +16,7 @@
     <string name="download_failed">Download failed. Check your connection and try again.</string>
     <string name="install_failed">Installation was cancelled or failed. You can try again.</string>
     <string name="update_installed">Update installed — launching…</string>
-    <string name="version_label">v1.0.2 · St. Xavier\'s School, Jaipur</string>
+    <string name="version_label">v1.0.3 · St. Xavier\'s Jr./Sr. School, Muzaffarpur</string>
     <string name="offline_title">You\'re offline</string>
     <string name="offline_msg">Check your internet connection and try again.</string>
     <string name="retry">Retry</string>
@@ -25,7 +25,7 @@
     <!-- login -->
     <string name="login_title_1">XavierDrive</string>
     <string name="login_title_2"></string>
-    <string name="login_sub">St. Xavier\'s School, Jaipur · Official Portal</string>
+    <string name="login_sub">St. Xavier\'s Jr./Sr. School, Muzaffarpur · Official Portal</string>
     <string name="login_welcome">Welcome back</string>
     <string name="login_hint">Sign in with your school Google account.\nYour role is assigned automatically.</string>
     <string name="login_google">Continue with Google</string>

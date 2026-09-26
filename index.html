@@ -1951,7 +1951,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         <img class="xd-logo-svg" src="logo.png" alt="XavierDrive emblem" style="border-radius:24%;"/>
       </div>
       <div class="xd-title" id="xd-title"></div>
-      <div class="logo-sub">St. Xavier's School, Jaipur &middot; Official Portal</div>
+      <div class="logo-sub">St. Xavier's Jr./Sr. School, Muzaffarpur &middot; Official Portal</div>
     </div>
     <div class="xd-chips">
       <div class="xd-chip"><img src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%2284 214 812 620%22%3E%3Cg stroke=%22%23ffffff%22 stroke-width=%2276%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M132 300 L368 724%22/%3E%3Cpath d=%22M368 300 L132 724%22/%3E%3C/g%3E%3Cg stroke=%22%23ffffff%22 stroke-width=%2268%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M520 300 C658 306 796 384 796 512 C796 640 658 778 520 724%22/%3E%3Cpath d=%22M520 300 L520 724%22/%3E%3C/g%3E%3Cg stroke=%22%23ffffff%22 stroke-width=%2214%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M368 300 L314 244 L262 244%22/%3E%3Cpath d=%22M796 512 L842 512%22/%3E%3Cpath d=%22M520 724 L520 770 L556 806%22/%3E%3C/g%3E%3Cg fill=%22%23ffffff%22%3E%3Ccircle cx=%22576%22 cy=%22806%22 r=%2216%22/%3E%3C/g%3E%3Ccircle cx=%22240%22 cy=%22244%22 r=%2220%22 fill=%22%238fe8ff%22/%3E%3Ccircle cx=%22864%22 cy=%22512%22 r=%2218%22 fill=%22%238fe8ff%22/%3E%3C/svg%3E" style="width:15px;height:15px" alt=""/>AI Assistant</div>
@@ -5080,8 +5080,7 @@ function fileBoxHTML(mid,fidx,name,mime,size){
   return `<div class="file-box"><div class="fb-icon">${fileIconFor(name)}</div><div class="fb-main"><div class="fb-name">${esc(name)}</div><div class="fb-meta">${esc(mime||'file')} · ${humanSize(size)}</div></div><div class="fb-actions"><button class="fb-btn" onclick="downloadMsgFile('${mid}',${fidx})">⬇ Download</button></div></div>`;
 }
 function pdfBoxHTML(mid,meta){
-  const hasBlob=!!_pdfBlobs[mid];
-  return `<div class="file-box"><div class="fb-icon">📄</div><div class="fb-main"><div class="fb-name">${esc(meta.name)}</div><div class="fb-meta">PDF document · ${humanSize(meta.size)||'generated'}${hasBlob?'':' · tap to regenerate'}</div></div><div class="fb-actions"><button class="fb-btn" onclick="downloadPdfArtifact('${mid}',${hasBlob?'false':'true'})">${hasBlob?'⬇ Download':'↻ Regenerate'}</button></div></div>`;
+  return `<div class="file-box"><div class="fb-icon">📄</div><div class="fb-main"><div class="fb-name">${esc(meta.name)}</div><div class="fb-meta">PDF document · ${humanSize(meta.size)||'generated'}</div></div><div class="fb-actions"><button class="fb-btn" onclick="downloadPdfArtifact('${mid}')">⬇ Download</button></div></div>`;
 }
 
 function copyCodeBlock(id,btn){
@@ -5427,6 +5426,40 @@ function drawChart(cv,spec){
 
 // —— AI file boxes + ZIP ————————————————————————————
 const _pdfBlobs={}; // mid -> Blob (fresh PDFs this session)
+// IndexedDB persistence: PDF blobs survive reloads + chat switches, so the
+// Download button works forever instead of degrading to "Regenerate".
+const _pdfdb={db:null};
+function _pdfIdb(){
+  if(_pdfdb.db)return Promise.resolve(_pdfdb.db);
+  return new Promise((res)=>{
+    try{
+      const q=indexedDB.open('xavierdrive-pdfs',1);
+      q.onupgradeneeded=()=>{try{q.result.createObjectStore('blobs');}catch(e){}};
+      q.onsuccess=()=>{_pdfdb.db=q.result;res(_pdfdb.db);};
+      q.onerror=()=>res(null);
+    }catch(e){res(null);}
+  });
+}
+async function pdfBlobSet(mid,blob,name){
+  try{
+    const db=await _pdfIdb();if(!db)return;
+    const tx=db.transaction('blobs','readwrite');
+    tx.objectStore('blobs').put(blob,mid);
+    if(name)tx.objectStore('blobs').put(name,mid+'_name');
+  }catch(e){}
+}
+async function pdfBlobGet(mid){
+  try{
+    const db=await _pdfIdb();if(!db)return null;
+    return await new Promise((res)=>{
+      try{
+        const rq=db.transaction('blobs','readonly').objectStore('blobs').get(mid);
+        rq.onsuccess=()=>res(rq.result||null);
+        rq.onerror=()=>res(null);
+      }catch(e){res(null);}
+    });
+  }catch(e){return null;}
+}
 function fileIconFor(name){
   const n=(name||'').toLowerCase();
   if(n.endsWith('.pdf'))return'📄';
@@ -5516,23 +5549,34 @@ function downloadMsgZip(mid){
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   toast('🗜️ ZIP with '+files.length+' files downloaded!','ok');
 }
-function downloadPdfArtifact(mid,regen){
-  const blob=_pdfBlobs[mid];
-  if(blob&&!regen){
+function downloadPdfArtifact(mid){
+  // one click = download. Blob lookup order: memory -> IndexedDB -> the
+  // worker re-renders the identical PDF server-side (invisible to the
+  // user), then it downloads. There is never a dead "regenerate" state.
+  const name=(_pdfBlobs[mid+'_name']||'document.pdf');
+  const go=(blob)=>{
     const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);a.download=_pdfBlobs[mid+'_name']||'document.pdf';a.click();
+    a.href=URL.createObjectURL(blob);a.download=name;a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),4000);
     toast('📄 PDF downloaded!','ok');
-    return;
-  }
-  // Regenerate (e.g. after a page reload — blobs don't survive reloads)
-  const meta=_pdfPrompts[mid];
-  if(!meta){toast('PDF unavailable — ask the AI to make it again','err');return;}
-  toast('Regenerating PDF...','ok');
-  fetch(WORKER+'/api/pdf/file',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({prompt:meta.prompt,title:meta.title})})
-    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
-    .then(b=>{_pdfBlobs[mid]=b;downloadPdfArtifact(mid,false);})
-    .catch(e=>toast('PDF regenerate failed: '+e.message,'err'));
+  };
+  const mem=_pdfBlobs[mid];
+  if(mem){go(mem);return;}
+  pdfBlobGet(mid).then(b=>{
+    if(b){go(b);return;}
+    const meta=_pdfPrompts[mid];
+    if(!meta){toast('PDF unavailable — ask the AI to make it again','err');return;}
+    toast('Preparing your PDF…','ok');
+    fetch(WORKER+'/api/pdf/file',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({prompt:meta.prompt,title:meta.title})})
+      .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob();})
+      .then(b=>{
+        _pdfBlobs[mid]=b;
+        _pdfBlobs[mid+'_name']=name;
+        pdfBlobSet(mid,b,name);
+        go(b);
+      })
+      .catch(e=>toast('PDF download failed: '+e.message,'err'));
+  });
 }
 const _pdfPrompts={}; // mid -> {prompt,title}
 
@@ -6852,6 +6896,7 @@ async function handlePDFCreation(userText,forceModel){
     const fname=(title.replace(/[^a-z0-9]+/gi,'_').slice(0,40)||'document')+'.pdf';
     _pdfBlobs[mid+'_name']=fname;
     _pdfPrompts[mid]={prompt:userText,title};
+    pdfBlobSet(mid,blob,fname);
     addAIMsg('📄 **Done! I prepared your PDF** — ' + title + '\n\nTap **Download** below to save it.\n\n```pdffile\n'+JSON.stringify({name:fname,size:blob.size,title,prompt:userText})+'\n```',true,true,false,{provider:'pdf-engine'});
     renderSessionsList();
   }catch(e){

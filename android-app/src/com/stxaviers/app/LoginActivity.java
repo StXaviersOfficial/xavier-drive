@@ -384,8 +384,56 @@ public class LoginActivity extends Activity {
         });
     }
 
-    // ── the real Google sign-in ─────────────────────────────────────────
+    // ── the real Google sign-in (native first, WebView fallback) ────────
     private void goAuth() {
+        // 1) Native Credential Manager: instant device-account picker —
+        //    no "connecting to Google" wait, saved accounts right there.
+        NativeGoogleSignIn.fetch(this, new NativeGoogleSignIn.Callback() {
+            @Override
+            public void onToken(String idToken, String displayName) {
+                // 2) trade the ID token for the school session
+                MobileSession.exchange(idToken, new MobileSession.Callback() {
+                    @Override
+                    public void onSuccess(String name) {
+                        runOnUiThread(() -> {
+                            if (isFinishing()) return;
+                            android.widget.Toast.makeText(LoginActivity.this,
+                                    (name == null || name.trim().isEmpty())
+                                            ? getString(R.string.auth_signed_in)
+                                            : getString(R.string.auth_welcome, name.trim()),
+                                    android.widget.Toast.LENGTH_SHORT).show();
+                            leaving = true;
+                            h.postDelayed(LoginActivity.this::goMainSilent, 250L);
+                        });
+                    }
+
+                    @Override
+                    public void onNetworkError(String message) {
+                        // Token was fine, server unreachable — the WebView flow
+                        // would hit the same network; stay and let them retry.
+                        runOnUiThread(() -> android.widget.Toast.makeText(
+                                LoginActivity.this,
+                                R.string.auth_offline,
+                                android.widget.Toast.LENGTH_LONG).show());
+                    }
+                });
+            }
+
+            @Override
+            public void onCancelled() {
+                // user closed the account picker — quietly back to the page
+            }
+
+            @Override
+            public void onUnavailable(String reason) {
+                // 3) no Play Services / ancient firmware — the hardened
+                //    WebView flow still signs in exactly like the website.
+                runOnUiThread(LoginActivity.this::openWebViewAuth);
+            }
+        });
+    }
+
+    private void openWebViewAuth() {
         try {
             startActivityForResult(new Intent(this, AuthActivity.class), 7001);
         } catch (Throwable ignored) {}

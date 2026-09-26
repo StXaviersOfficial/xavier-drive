@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.stxaviers.app"
-    android:versionCode="4"
-    android:versionName="1.0.2">
+    android:versionCode="5"
+    android:versionName="1.0.3">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -17,6 +17,13 @@
         android:extractNativeLibs="false"
         android:usesCleartextTraffic="false"
         android:theme="@style/Theme.XavierDrive">
+
+        <!-- Google Play Services version marker (used by the Credential
+             Manager fallback on Android < 14). The integer comes from the
+             play-services-basement AAR merged at build time. -->
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
 
         <activity android:name=".SplashActivity" android:exported="true" android:noHistory="true"
             android:theme="@style/Theme.XavierDrive.Splash">

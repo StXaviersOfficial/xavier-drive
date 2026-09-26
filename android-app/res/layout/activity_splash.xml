@@ -79,7 +79,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:letterSpacing="0.08"
-                android:text="ST. XAVIER'S SCHOOL · JAIPUR" />
+                android:text="ST. XAVIER'S JR./SR. SCHOOL · MUZAFFARPUR" />
 
             <!-- ══ checking (default state) ══ -->
             <LinearLayout

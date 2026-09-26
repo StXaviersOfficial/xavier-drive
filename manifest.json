@@ -1,7 +1,7 @@
 {
-  "name": "XavierDrive — St. Xavier's School",
+  "name": "XavierDrive — St. Xavier's Jr./Sr. School",
   "short_name": "XavierDrive",
-  "description": "The official school portal of St. Xavier's School, Jaipur — AI assistant, school drive, live classes.",
+  "description": "The official school portal of St. Xavier's Jr./Sr. School, Muzaffarpur — AI assistant, school drive, live classes.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#070d1f",

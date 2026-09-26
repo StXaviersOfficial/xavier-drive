@@ -696,7 +696,7 @@ async function chatOrchestrate(body, onStep) {
   return { response: ai.text, provider: ai.provider, searched: !!(pack && (pack.sources.length || pack.queries.some(q => (q.results || []).length))), sources: srcMeta };
 }
 
-const PDF_MD_INSTRUCTION = `You are a school document writer for St. Xavier's School. Write a COMPLETE, well-structured document in clean Markdown for the user's request.
+const PDF_MD_INSTRUCTION = `You are a school document writer for St. Xavier's Jr./Sr. School, Muzaffarpur. Write a COMPLETE, well-structured document in clean Markdown for the user's request.
 RULES:
 - Output ONLY Markdown. No preamble, no closing notes, no code fences around the whole output.
 - Start with a # title, then ## sections.

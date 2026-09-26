@@ -91,57 +91,60 @@ public class SplashActivity extends Activity {
         ring1.setAlpha(0f);
         ring2.setAlpha(0f);
         logo.setAlpha(0f);
-        logo.setScaleX(0.25f);
-        logo.setScaleY(0.25f);
-        logo.setRotation(-14f);
+        logo.setScaleX(0.62f);
+        logo.setScaleY(0.62f);
         title.setAlpha(0f);
         title.setTranslationY(30f);
         sub.setAlpha(0f);
         sub.setTranslationY(18f);
 
-        final OvershootInterpolator over = new OvershootInterpolator(1.9f);
+        // v1.0.3: the entrance used a 1.9-tension overshoot from 0.25 scale
+        // plus a -14° rotation swing — on a real device that read as the logo
+        // SHAKING violently. Everything below is deliberately gentler: a soft
+        // settle-in, a slow ±5dp breathe, a whisper of glow.
+        final OvershootInterpolator over = new OvershootInterpolator(0.45f);
         final DecelerateInterpolator dec = new DecelerateInterpolator();
         final AccelerateDecelerateInterpolator ace =
                 new AccelerateDecelerateInterpolator();
 
-        glow.animate().alpha(1f).setDuration(700).setInterpolator(dec).start();
-        glow.setScaleX(0.7f);
-        glow.setScaleY(0.7f);
+        glow.animate().alpha(1f).setDuration(900).setInterpolator(dec).start();
+        glow.setScaleX(0.94f);
+        glow.setScaleY(0.94f);
         mainHandler.postDelayed(new Runnable() {
             @Override public void run() {
                 if (glow == null) return;
-                glow.animate().scaleX(1.12f).scaleY(1.12f).alpha(0.65f)
-                        .setDuration(1400).setInterpolator(ace)
-                        .withEndAction(() -> glow.animate().scaleX(0.86f).scaleY(0.86f).alpha(1f)
-                                .setDuration(1400).setInterpolator(ace).withEndAction(this).start())
+                glow.animate().scaleX(1.05f).scaleY(1.05f).alpha(0.82f)
+                        .setDuration(2600).setInterpolator(ace)
+                        .withEndAction(() -> glow.animate().scaleX(0.94f).scaleY(0.94f).alpha(1f)
+                                .setDuration(2600).setInterpolator(ace).withEndAction(this).start())
                         .start();
             }
-        }, 650);
+        }, 900);
 
-        ring1.animate().alpha(1f).setDuration(600).setStartDelay(250).setInterpolator(dec).start();
-        ring2.animate().alpha(1f).setDuration(600).setStartDelay(450).setInterpolator(dec).start();
+        ring1.animate().alpha(1f).setDuration(800).setStartDelay(300).setInterpolator(dec).start();
+        ring2.animate().alpha(1f).setDuration(800).setStartDelay(500).setInterpolator(dec).start();
         mainHandler.post(new Runnable() {
             float deg1 = 0f, deg2 = 0f;
             @Override public void run() {
                 if (ring1 == null || ring2 == null) return;
-                deg1 += 1.6f; deg2 -= 1.0f;
+                deg1 += 0.55f; deg2 -= 0.34f;          // slow, calm drift
                 ring1.setRotation(deg1);
                 ring2.setRotation(deg2);
                 mainHandler.postDelayed(this, 16);
             }
         });
 
-        logo.animate().alpha(1f).scaleX(1f).scaleY(1f).rotation(0f)
-                .setDuration(850).setStartDelay(120).setInterpolator(over).start();
+        logo.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                .setDuration(900).setStartDelay(140).setInterpolator(over).start();
         mainHandler.postDelayed(new Runnable() {
             @Override public void run() {
                 if (logo == null) return;
-                logo.animate().translationY(-12f).setDuration(1700).setInterpolator(ace)
-                        .withEndAction(() -> logo.animate().translationY(4f).setDuration(1700)
+                logo.animate().translationY(-5f).setDuration(2800).setInterpolator(ace)
+                        .withEndAction(() -> logo.animate().translationY(2f).setDuration(2800)
                                 .setInterpolator(ace).withEndAction(this).start())
                         .start();
             }
-        }, 1000);
+        }, 1100);
 
         title.animate().alpha(1f).translationY(0f).setDuration(650).setStartDelay(430).setInterpolator(dec).start();
         sub.animate().alpha(1f).translationY(0f).setDuration(650).setStartDelay(580).setInterpolator(dec).start();
@@ -150,7 +153,7 @@ public class SplashActivity extends Activity {
     private void runUpdateCheck() {
         UpdateCheck.UpdateInfo info = null;
         try {
-            info = UpdateCheck.fetchLatest();
+            info = UpdateCheck.fetchLatest(this);
         } catch (Throwable ignored) {}
         final UpdateCheck.UpdateInfo update = info;
         final long wait = Math.max(0, MIN_SPLASH_MS - (System.currentTimeMillis() - shownAt));
@@ -160,8 +163,13 @@ public class SplashActivity extends Activity {
     private void proceed(UpdateCheck.UpdateInfo update) {
         if (proceeded || isFinishing()) return;
         proceeded = true;
+        // version straight from the package manager — an installed 1.0.2 is
+        // NEVER offered the 1.0.2 update again (the v1.0.2 bug: a stale
+        // hardcoded constant made everyone "outdated")
+        int installed = UpdateCheck.currentVersionCode(this);
         if (update != null
-                && update.versionCode > UpdateCheck.CURRENT_VERSION_CODE
+                && installed > 0
+                && update.versionCode > installed
                 && !update.apkUrl.trim().isEmpty()) {
             showUpdateUI(update);
         } else {

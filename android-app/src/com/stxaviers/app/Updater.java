@@ -73,7 +73,7 @@ public final class Updater {
                 conn.setConnectTimeout(CONNECT_MS);
                 conn.setReadTimeout(READ_MS);
                 conn.setRequestProperty("User-Agent",
-                        "XavierDrive/" + UpdateCheck.CURRENT_VERSION_NAME + " (Android)");
+                        "XavierDrive/" + UpdateCheck.currentVersionName(ctx) + " (Android)");
                 conn.setInstanceFollowRedirects(true);
 
                 int status = conn.getResponseCode();

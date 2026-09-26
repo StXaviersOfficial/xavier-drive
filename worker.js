@@ -379,6 +379,65 @@ async function handleCallback(request, env) {
   return new Response(null, { status: 302, headers });
 }
 
+// —— Android app native sign-in (Credential Manager ID token) ——————————
+// The app's Google button now uses Android Credential Manager: the device
+// account picker appears instantly, Google returns an ID token, and the app
+// POSTs it here. We verify it against Google's tokeninfo endpoint and mint
+// the exact same KV session the web /callback flow creates, then hand the
+// raw Set-Cookie string back so the app can drop it into its WebView cookie
+// jar and open the portal already signed in.
+async function handleMobileAuth(request, env) {
+  if (request.method !== 'POST') return json({ error: 'POST only' }, 405, '');
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'bad JSON' }, 400, ''); }
+  const idToken = String((body && body.idToken) || '');
+  if (!idToken || idToken.length < 20) return json({ error: 'missing idToken' }, 400, '');
+
+  let info;
+  try {
+    const r = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
+    info = await r.json();
+  } catch (e) {
+    return json({ error: 'Could not reach Google to verify the sign-in' }, 502, '');
+  }
+  const aud = String(info.aud || '');
+  const iss = String(info.iss || '');
+  const email = String(info.email || '').toLowerCase();
+  const issOk = iss === 'accounts.google.com' || iss === 'https://accounts.google.com';
+  const expOk = Number(info.exp || 0) > Date.now() / 1000;
+  if (!info || info.error_description || !issOk || !expOk) {
+    return json({ error: 'Invalid or expired sign-in token' }, 401, '');
+  }
+  if (aud !== env.GOOGLE_CLIENT_ID) {
+    return json({ error: 'Token is not for this app' }, 401, '');
+  }
+  if (info.email_verified !== 'true' && info.email_verified !== true) {
+    return json({ error: 'Email not verified' }, 401, '');
+  }
+  if (!email || email.length < 3) return json({ error: 'No email in token' }, 401, '');
+
+  const name = info.name || email.split('@')[0];
+  const picture = info.picture || '';
+  const sid = await makeSessionId(env.SESSION_SECRET || 'fallback-secret');
+  await setSession(env, sid, {
+    user: { email, name, picture },
+    access_token: null, // native flow has no user access token; portal works off /me
+    created: Date.now(),
+    via: 'android-credential-manager',
+  });
+  const roleInfo = await verifyRole(env, email);
+
+  return json({
+    ok: true,
+    user: { email, name, picture },
+    role: roleInfo.role,
+    isAdmin: roleInfo.isAdmin,
+    isDeveloper: roleInfo.isDeveloper || false,
+    cookie: sessionCookie('xd_sid', sid, 86400 * 7),
+    expiresIn: 86400 * 7,
+  }, 200, '');
+}
+
 async function handleMe(request, env, origin) {
   const cookies = parseCookies(request.headers.get('Cookie'));
   const sess = await getSession(env, cookies);
@@ -653,7 +712,7 @@ async function incrementQuota(env, email) {
 
 // —— Groq call ———————————————————————————————————
 
-const GROQ_SYSTEM_PROMPT = `You are XavierDrive AI — the official AI assistant of St. Xavier's School, embedded in the school portal. You are an AGENTIC assistant: for questions that need live web knowledge the app runs a web search BEFORE you answer and hands you the results, and it can render charts and downloadable files from your output.
+const GROQ_SYSTEM_PROMPT = `You are XavierDrive AI — the official AI assistant of St. Xavier's Jr./Sr. School, Muzaffarpur (CBSE, Goshala Road, est. 1976), embedded in the school portal. You are an AGENTIC assistant: for questions that need live web knowledge the app runs a web search BEFORE you answer and hands you the results, and it can render charts and downloadable files from your output.
 
 WHO YOU TALK TO
 The user's role and class are given in a context block. Tailor every reply:
@@ -1694,7 +1753,7 @@ async function handleQuota(request, env, origin) {
 
 // —— PDF creation handler ——————————————————————————
 
-const PDF_SYSTEM_INSTRUCTION = `You are an expert PDF document designer for St. Xavier's School, Jaipur. Generate a COMPLETE, BEAUTIFUL, PRINT-READY HTML document for the following request.
+const PDF_SYSTEM_INSTRUCTION = `You are an expert PDF document designer for St. Xavier's Jr./Sr. School, Muzaffarpur (CBSE school on Goshala Road, Ramna, Muzaffarpur 842002, Bihar). Generate a COMPLETE, BEAUTIFUL, PRINT-READY HTML document for the following request.
 
 OUTPUT RULES — CRITICAL:
 - Output ONLY the full HTML document. Nothing else. No explanation. No markdown. No backticks.
@@ -2951,10 +3010,10 @@ async function handleLiveChatAction(request, env, origin) {
 // Bump these when releasing a new APK — the app checks this on every launch.
 // apkUrl must point at the publicly-hosted APK on the Pages site.
 const APP_LATEST = {
-  versionCode: 4,
-  versionName: '1.0.2',
-  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.0.2.apk',
-  notes: "XavierDrive v1.0.2 — real Google sign-in inside the app (one tap, straight into the portal), blank-page fix with auto-recovery, XavierDrive branding everywhere."
+  versionCode: 5,
+  versionName: '1.0.3',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.0.3.apk',
+  notes: "XavierDrive v1.0.3 — instant native Google sign-in (device account picker, no more waiting), update-notice fix for 1.0.2 users, calmer splash animation, correct school (St. Xavier's Jr./Sr. School, Muzaffarpur) everywhere."
 };
 
 function handleAppVersion(origin) {
@@ -2977,7 +3036,10 @@ export default {
     // CSRF defense — reject state-changing requests from disallowed origins.
     // OAuth callback (/callback) is exempt because Google redirects without an Origin header.
     // /internal/* is server-to-server (X-Backend-Key auth, no Origin) — also exempt.
-    if (path !== '/callback' && !path.startsWith('/internal/')) {
+    // /api/auth/mobile is also exempt: the Android app is a native client
+    // (no Origin header) and the request carries its own proof (a verified
+    // Google ID token) instead of relying on ambient cookies.
+    if (path !== '/callback' && !path.startsWith('/internal/') && path !== '/api/auth/mobile') {
       const csrf = csrfCheck(request, origin);
       if (csrf) return csrf;
     }
@@ -2986,6 +3048,7 @@ export default {
     if (path === '/login') return handleLogin(env, origin);
     if (path === '/owner-login') return handleOwnerLogin(env, origin);
     if (path === '/callback') return handleCallback(request, env);
+    if (path === '/api/auth/mobile' && request.method === 'POST') return handleMobileAuth(request, env);
     if (path === '/me') return handleMe(request, env, origin);
     if (path === '/token') return handleToken(request, env, origin);
     if (path === '/logout') return handleLogout(request, env, origin);

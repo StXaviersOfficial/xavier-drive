@@ -1,6 +1,6 @@
 # StXaviersOnline (xavier-drive)
 
-The official student/teacher portal for St. Xavier's Jr./Sr. School, Muzaffarpur, Bihar.
+The official student/teacher portal for St. Xavier's Jr./Sr. School (Junior Senior School), Goshala Road, Ramna, Muzaffarpur 842002, Bihar.
 
 ## 🏗️ Architecture
 
