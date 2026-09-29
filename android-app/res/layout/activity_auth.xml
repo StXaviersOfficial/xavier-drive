@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/login_bg">
+
+    <com.stxaviers.app.AuroraView
+        android:id="@+id/auth_aurora"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <com.stxaviers.app.StarfieldView
+        android:id="@+id/auth_stars"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- ── branded header ── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingTop="22dp"
+            android:paddingBottom="10dp"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:src="@drawable/login_logo"
+                    android:contentDescription="@string/app_name" />
+
+                <com.stxaviers.app.ShimmerTextView
+                    android:id="@+id/auth_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="10dp"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.02"
+                    android:textColor="@color/login_ink"
+                    android:text="@string/app_name" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/auth_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="12sp"
+                android:letterSpacing="0.02"
+                android:gravity="center"
+                android:textColor="@color/login_muted"
+                android:text="@string/auth_status_connecting" />
+        </LinearLayout>
+
+        <!-- thin animated loading bar -->
+        <ProgressBar
+            android:id="@+id/auth_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginLeft="24dp"
+            android:layout_marginRight="24dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/accent"
+            android:visibility="invisible" />
+
+        <!-- ── the sign-in browser (Google's own account picker) ── -->
+        <FrameLayout
+            android:id="@+id/auth_web_card"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="12dp"
+            android:layout_marginLeft="14dp"
+            android:layout_marginRight="14dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/auth_card_bg">
+
+            <WebView
+                android:id="@+id/auth_web"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- ── error state ── -->
+    <LinearLayout
+        android:id="@+id/auth_error"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:layout_margin="32dp"
+        android:padding="28dp"
+        android:background="@drawable/update_panel_bg"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:alpha="0.9"
+            android:src="@drawable/login_logo"
+            android:contentDescription="@string/app_name" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textSize="19sp"
+            android:textStyle="bold"
+            android:textColor="@color/login_ink"
+            android:text="@string/auth_error_title" />
+
+        <TextView
+            android:id="@+id/auth_error_msg"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textSize="13sp"
+            android:lineSpacingExtra="4dp"
+            android:gravity="center"
+            android:textColor="@color/login_muted"
+            android:text="@string/auth_timeout" />
+
+        <Button
+            android:id="@+id/auth_retry"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/cta_btn_bg"
+            android:stateListAnimator="@null"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:textColor="@color/cta_ink"
+            android:text="@string/auth_retry" />
+
+        <Button
+            android:id="@+id/auth_back"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/text_btn_bg"
+            android:stateListAnimator="@null"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:textColor="@color/continue_ink"
+            android:text="@string/auth_back" />
+    </LinearLayout>
+
+    <!-- ── success state ── -->
+    <LinearLayout
+        android:id="@+id/auth_success"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:layout_margin="32dp"
+        android:padding="28dp"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:layout_width="148dp"
+            android:layout_height="148dp">
+
+            <View
+                android:layout_width="140dp"
+                android:layout_height="140dp"
+                android:layout_gravity="center"
+                android:background="@drawable/splash_glow" />
+
+            <ImageView
+                android:id="@+id/auth_success_logo"
+                android:layout_width="104dp"
+                android:layout_height="104dp"
+                android:layout_gravity="center"
+                android:src="@drawable/login_logo"
+                android:contentDescription="@string/app_name" />
+        </FrameLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.01"
+            android:textColor="@color/login_ink"
+            android:text="@string/auth_signed_in" />
+
+        <TextView
+            android:id="@+id/auth_success_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:textColor="@color/login_muted"
+            android:text="@string/auth_signed_in" />
+    </LinearLayout>
+</FrameLayout>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TIMETABLE (v1.1.0) — class+section grid, read for students,
+     editable + savable for teachers. Horizontal scroll for the grid. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/home_bg">
+
+    <!-- header with back -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="8dp"
+        android:paddingRight="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="6dp">
+
+        <ImageView
+            android:id="@+id/tt_back"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:scaleType="centerInside"
+            android:padding="10dp"
+            android:src="@drawable/ic_chevron"
+            android:rotation="180"
+            android:tint="@color/home_ink"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/timetable_title"
+            android:textSize="20sp"
+            android:fontFamily="@font/inter_medium"
+            android:textColor="@color/home_ink" />
+
+        <TextView
+            android:id="@+id/tt_save"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:background="@drawable/btn_primary"
+            android:textSize="13sp"
+            android:fontFamily="@font/inter_medium"
+            android:textColor="@color/home_hero_ink"
+            android:text="@string/save"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- class + section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:paddingTop="4dp">
+
+        <Spinner
+            android:id="@+id/tt_class"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="3"
+            android:background="@drawable/chip_off" />
+
+        <Space
+            android:layout_width="10dp"
+            android:layout_height="1dp" />
+
+        <Spinner
+            android:id="@+id/tt_section"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="2"
+            android:background="@drawable/chip_off" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scrollbars="none"
+            android:paddingTop="14dp"
+            android:paddingBottom="20dp">
+
+            <LinearLayout
+                android:id="@+id/tt_grid"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingRight="16dp" />
+        </HorizontalScrollView>
+
+        <LinearLayout
+            android:id="@+id/tt_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_gravity="center">
+
+            <ProgressBar
+                android:layout_width="36dp"
+                android:layout_height="36dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tt_empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="24dp"
+            android:padding="24dp"
+            android:gravity="center"
+            android:textSize="13sp"
+            android:textColor="@color/home_muted"
+            android:text="@string/timetable_empty"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>

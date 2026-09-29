@@ -1,0 +1,414 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     XAVIERDRIVE STRINGS — v1.1.2.
+
+     Copy rules (standing owner order):
+       - natural, professional sentences — no chatty filler, no all-caps
+         shouting, no emoji, no prompt-flavoured words
+       - errors say what happened + what to do next
+       - empty states describe the future, not the void
+     ════════════════════════════════════════════════════════════════════ -->
+<resources>
+    <string name="app_name">XavierDrive</string>
+
+    <!-- splash / update checker -->
+    <string name="checking_updates">checking for updates</string>
+    <string name="checking_session">checking your account</string>
+    <string name="update_available">Update available</string>
+    <string name="update_message">XavierDrive %s is ready to install. Would you like to update now?</string>
+    <string name="download_update">Download update</string>
+    <string name="later">Later</string>
+    <string name="cancel">Cancel download</string>
+    <string name="install_update">Install update</string>
+    <string name="downloaded_ready">Downloaded · %s — ready to install</string>
+    <string name="update_ready_file">Already downloaded · %s — ready to install</string>
+    <string name="install_perms_hint">Allow installs from XavierDrive when Android asks, then tap Install update again.</string>
+    <string name="download_failed">The download didn\'t finish. Check your connection and try again.</string>
+    <string name="install_failed">The installation was cancelled. The update is still saved, so you can try again.</string>
+    <string name="update_installed">Update installed — starting XavierDrive</string>
+    <string name="version_label">v1.1.2</string>
+    <string name="exit_hint">Press back again to leave XavierDrive</string>
+
+    <!-- login -->
+    <string name="login_title_1">XavierDrive</string>
+    <string name="login_sub">St. Xavier\'s Jr./Sr. School</string>
+    <string name="login_welcome">Welcome back</string>
+    <string name="login_google">Continue with Google</string>
+    <string name="login_note">By continuing, you agree to the Terms of Service and Privacy Policy.</string>
+    <string name="close">Close</string>
+
+    <!-- google sign-in bridge -->
+    <string name="auth_status_connecting">Connecting to Google…</string>
+    <string name="auth_status_wait">Waiting for you to finish signing in…</string>
+    <string name="auth_status_verify">Verifying your account…</string>
+    <string name="auth_error_title">Sign-in didn\'t complete</string>
+    <string name="auth_retry">Try again</string>
+    <string name="auth_back">Back to login</string>
+    <string name="auth_signed_in">Signed in</string>
+    <string name="auth_welcome">Welcome, %s</string>
+    <string name="auth_timeout">Google sign-in timed out. Check your connection and try again.</string>
+    <string name="auth_cancelled">Sign-in was cancelled. You can try again.</string>
+    <string name="auth_verify_failed">The account couldn\'t be verified. Please try again.</string>
+    <string name="auth_offline">Couldn\'t reach Google. Check your connection and try again.</string>
+    <string name="auth_web_fallback">Opening the secure web sign-in…</string>
+    <string name="session_ended">Your session ended — please sign in again</string>
+    <string name="mobile_server_unreachable">Couldn\'t reach the school server. Check your connection and try again.</string>
+
+    <!-- ══ home shell + the four menus ══ -->
+    <string name="school_identity">St. Xavier\'s Jr./Sr. School</string>
+    <string name="home_avatar_cd">Your account</string>
+    <string name="home_greeting_morning">Good morning</string>
+    <string name="home_greeting_afternoon">Good afternoon</string>
+    <string name="home_greeting_evening">Good evening</string>
+    <string name="home_name_default">Student</string>
+    <string name="home_version_line">XavierDrive v%s</string>
+    <string name="home_nav_home">Home</string>
+    <string name="home_nav_ai">AI</string>
+    <string name="home_nav_profile">Profile</string>
+
+    <!-- workspace switcher -->
+    <string name="ws_switch_cd">Switch menu</string>
+    <string name="ws_switch_title">Switch menu</string>
+    <string name="ws_student">Student</string>
+    <string name="ws_student_desc">Classes, material and notices</string>
+    <string name="ws_teacher_desc">Upload and manage class material</string>
+    <string name="ws_admin_desc">Roles and school oversight</string>
+    <string name="ws_developer_desc">Diagnostics and full access</string>
+
+    <!-- student menu -->
+    <string name="latest_notice_tag">Latest notice</string>
+    <string name="latest_notice_loading">Loading the newest notice…</string>
+    <string name="latest_notice_none">No notices yet</string>
+    <string name="latest_notice_meta_none">Announcements will appear here</string>
+    <string name="latest_notice_view_all">See all notices</string>
+    <string name="notices_new_badge">%d new</string>
+    <string name="section_school_tools">School tools</string>
+    <string name="home_timetable">Timetable</string>
+    <string name="home_live">Live</string>
+    <string name="home_logbook">Logbook</string>
+    <string name="home_notices">Notices</string>
+    <string name="home_files">Files</string>
+
+    <!-- teacher menu -->
+    <string name="ws_teacher_tools">Teacher tools</string>
+    <string name="ws_teacher_sub">Everything you post appears instantly for your students</string>
+    <string name="ws_teacher_note">Uploading is available only from this menu. Switch to the Student menu anytime to see the school the way your students do.</string>
+    <string name="section_class_material">Class material</string>
+    <string name="tch_upload_title">Upload material</string>
+    <string name="tch_upload_desc">Notes, PDFs and worksheets for a class</string>
+    <string name="tch_notice_title">Post a notice</string>
+    <string name="tch_notice_desc">For the whole school or a single class</string>
+    <string name="tch_logbook_title">Logbook entry</string>
+    <string name="tch_logbook_desc">Add photos from a class activity</string>
+    <string name="tch_timetable_title">Timetable editor</string>
+    <string name="tch_timetable_desc">Set the periods for a class and section</string>
+    <string name="section_class_management">Class management</string>
+    <string name="tch_attendance_title">Attendance register</string>
+    <string name="tch_attendance_desc">Mark present and absent for today</string>
+    <string name="tch_live_title">Start a live class</string>
+    <string name="tch_live_desc">Go live with your stream key</string>
+
+    <!-- admin menu -->
+    <string name="ws_admin_center">Admin center</string>
+    <string name="ws_admin_sub">People and oversight for the whole school</string>
+    <string name="ws_admin_note">Role changes take effect the next time that person signs in. To upload material, switch to the Teacher menu.</string>
+    <string name="section_people">People</string>
+    <string name="adm_roles_title">Manage roles</string>
+    <string name="adm_roles_desc">Promote, demote or remove any account</string>
+    <string name="section_oversight">Oversight</string>
+    <string name="adm_live_title">Live classes</string>
+    <string name="adm_live_desc">See and end any running class</string>
+
+    <!-- developer menu -->
+    <string name="ws_developer">Developer</string>
+    <string name="ws_developer_sub">Diagnostics and full access</string>
+    <string name="ws_developer_note">All four menus are unlocked for this account. These values come straight from the school server.</string>
+    <string name="section_account_rank">Account</string>
+    <string name="dev_email">Account</string>
+    <string name="dev_rank">Rank</string>
+    <string name="dev_admin_flag">Admin access</string>
+    <string name="dev_dev_flag">Developer access</string>
+    <string name="dev_access_level">Access level</string>
+    <string name="dev_active_menu">Active menu</string>
+    <string name="section_build">Build</string>
+    <string name="dev_version">Version</string>
+    <string name="dev_package">com.stxaviers.app</string>
+    <string name="dev_update_service">Update service</string>
+    <string name="dev_checking">Checking…</string>
+    <string name="dev_update_available">update available</string>
+    <string name="dev_unreachable">Unreachable</string>
+    <string name="dev_yes">Yes</string>
+    <string name="dev_no">No</string>
+
+    <!-- ══ files ══ -->
+    <string name="screen_files">Files</string>
+    <string name="screen_files_sub">Class material shared by your teachers</string>
+    <string name="filter_all">All</string>
+    <string name="filter_pdf">PDF</string>
+    <string name="filter_docs">Docs</string>
+    <string name="filter_images">Images</string>
+    <string name="filter_video">Video</string>
+    <string name="all_classes">All classes</string>
+    <string name="all_subjects">All subjects</string>
+    <string name="search_files">Search files…</string>
+    <string name="files_loading">Loading class material…</string>
+    <string name="files_empty">Nothing here yet</string>
+    <string name="files_empty_sub">When your teachers share notes, PDFs or worksheets for this class, they\'ll appear here.</string>
+    <string name="error_load">Couldn\'t load this</string>
+    <string name="retry">Retry</string>
+    <string name="download_started">Downloading…</string>
+    <string name="no_viewer">No app can open this file, but it\'s saved in the XavierDrive folder</string>
+    <string name="upload_file">Upload file</string>
+    <string name="uploading">Uploading…</string>
+    <string name="upload_done">Upload complete</string>
+    <string name="upload_failed">The upload didn\'t finish</string>
+    <string name="field_class">Class</string>
+    <string name="field_subject">Subject</string>
+    <string name="field_topic">Topic (optional — becomes the name students see)</string>
+    <string name="topic_hint">e.g. Science Chapter 4 question answers</string>
+    <string name="file_name_hint">File name</string>
+    <string name="pick_file">Choose a file</string>
+    <string name="delete_confirm">Remove “%s”?</string>
+    <string name="delete">Remove</string>
+    <string name="deleted">Removed</string>
+    <string name="delete_failed">It couldn\'t be removed</string>
+
+    <!-- ══ XavierDrive AI ══ -->
+    <string name="ai_hint">Ask anything about your schoolwork…</string>
+    <string name="ai_close_cd">Close AI</string>
+    <string name="ai_empty_title">What shall we work on?</string>
+    <string name="ai_empty_sub">Homework help, explanations, study plans — ask away.</string>
+    <string name="ai_sug_1">Explain a topic from my syllabus</string>
+    <string name="ai_sug_2">Make a study plan for this week</string>
+    <string name="ai_sug_3">Summarise a chapter with key points</string>
+    <string name="ai_error">Something went wrong on the way — please try again</string>
+    <string name="ai_quota_warn">You\'ve reached today\'s AI limit — the answer below may be shorter than usual.</string>
+    <string name="new_chat">New chat</string>
+    <string name="ai_history_cd">Chat history</string>
+    <string name="ai_history_title">Chats</string>
+    <string name="ai_history_none">Your conversations will collect here</string>
+    <string name="ai_history_messages">messages</string>
+    <string name="ai_delete_chat_confirm">Delete this conversation?</string>
+    <string name="ai_time_now">just now</string>
+    <string name="ai_time_min">min ago</string>
+    <string name="ai_time_hour">h ago</string>
+    <string name="ai_time_day">d ago</string>
+
+    <!-- composer + actions (v1.1.2) -->
+    <string name="ai_attach_cd">Add to your message</string>
+    <string name="ai_mic_cd">Speak</string>
+    <string name="ai_menu_camera">Camera</string>
+    <string name="ai_menu_photos">Photos</string>
+    <string name="ai_menu_files">Files</string>
+    <string name="ai_menu_image">Generate image</string>
+    <string name="ai_menu_research">Deep research</string>
+    <string name="ai_copy">Copy</string>
+    <string name="ai_copied">Copied</string>
+    <string name="ai_listen">Listen</string>
+    <string name="ai_regenerate">Regenerate</string>
+    <string name="ai_preview">Preview</string>
+    <string name="ai_saved_downloads">Saved:</string>
+    <string name="ai_pdf_failed">Couldn\'t prepare that PDF — ask the AI to make it again</string>
+    <string name="ai_prep">Preparing…</string>
+    <string name="ai_research_on">Deep research</string>
+    <string name="ai_research_hint">Answers take a little longer and include sources</string>
+    <string name="ai_image_working">Creating your image…</string>
+    <string name="ai_image_failed">The image couldn\'t be created — please try again</string>
+    <string name="ai_voice_title">AI voice</string>
+    <string name="ai_settings">AI settings</string>
+    <string name="ai_chat_manager">Chat manager</string>
+    <string name="ai_delete_all">Delete all chats</string>
+    <string name="ai_delete_all_confirm">Delete every conversation on this account? They\'ll also be removed from the website.</string>
+    <string name="ai_att_max">You can attach up to 4 files</string>
+    <string name="ai_listening">Listening…</string>
+    <string name="ai_voice_unavailable">Voice input isn\'t available on this device</string>
+    <string name="ai_tts_failed">Couldn\'t play the audio</string>
+    <string name="ai_offline_chats">Showing your saved chats — sync needs a connection</string>
+
+    <!-- ══ notices ══ -->
+    <string name="screen_notices">Notices</string>
+    <string name="home_notices_sub">Announcements and circulars</string>
+    <string name="notices_loading">Loading notices…</string>
+    <string name="notices_empty">No notices yet</string>
+    <string name="notices_empty_sub">When the school announces something, it will appear here.</string>
+    <string name="notice_school_wide">School-wide</string>
+    <string name="notice_attachment">Attached · %s</string>
+    <string name="post_notice">New notice</string>
+    <string name="field_title">Title</string>
+    <string name="field_message">Message</string>
+    <string name="target_all">Entire school</string>
+    <string name="target_class">Specific class</string>
+    <string name="post">Post notice</string>
+    <string name="posted">Notice posted</string>
+
+    <!-- ══ profile ══ -->
+    <string name="profile_class">My class</string>
+    <string name="profile_class_sub">Timetable, logbook, live classes, notices and files open on this class by default. You can still change it inside each screen.</string>
+    <string name="profile_edit">Edit profile</string>
+    <string name="profile_edit_name">Display name</string>
+    <string name="profile_change_photo">Choose a new photo</string>
+    <string name="profile_photo_picked">New photo selected</string>
+    <string name="profile_saved">Profile updated</string>
+    <string name="profile_save_failed">The profile couldn\'t be saved — please try again</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sign_out_confirm">Sign out of XavierDrive?</string>
+    <string name="legal_terms">Terms of Service</string>
+    <string name="legal_privacy">Privacy Policy</string>
+    <string name="section_legal">Legal</string>
+    <string name="section_account">Account</string>
+    <string name="section_app">App</string>
+    <string name="section_school">School</string>
+    <string name="school_screen">School</string>
+    <string name="school_screen_desc">Where discipline meets opportunity</string>
+    <string name="school_website">School website</string>
+    <string name="school_website_url">www.stxaviers.org</string>
+    <string name="school_email">Email the school</string>
+    <string name="school_email_addr">helpdesk@stxaviers.org</string>
+    <string name="share_xd">Share XavierDrive</string>
+    <string name="open_website">Open XavierDrive website</string>
+
+    <!-- ══ timetable ══ -->
+    <string name="timetable_title">Timetable</string>
+    <string name="timetable_empty">No timetable saved for this class yet</string>
+    <string name="timetable_saved">Timetable saved</string>
+    <string name="save">Save</string>
+
+    <!-- ══ logbook ══ -->
+    <string name="logbook_title">Logbook</string>
+    <string name="logbook_loading">Loading the class diary…</string>
+    <string name="logbook_empty">No logbook entries yet</string>
+    <string name="logbook_empty_sub">Photos your teachers share from class activities will appear here.</string>
+    <string name="add_entry">Add entry</string>
+    <string name="field_date">Date</string>
+    <string name="field_caption">Caption (optional)</string>
+    <string name="pick_photos">Choose photos</string>
+    <string name="photos_selected">%d photos selected</string>
+    <string name="upload_entry">Upload entry</string>
+
+    <!-- ══ live ══ -->
+    <string name="live_title">Live</string>
+    <string name="live_now">Live now</string>
+    <string name="live_none">No live classes right now</string>
+    <string name="live_none_sub">When a teacher goes live, it will show up here</string>
+    <string name="join">Join</string>
+    <string name="recordings">Recordings</string>
+    <string name="schedule">Schedule</string>
+    <string name="start_class">Go live</string>
+    <string name="end_class">End class</string>
+    <string name="live_started">You\'re live — copy the stream key into OBS</string>
+    <string name="stream_url">Stream URL</string>
+    <string name="stream_key">Stream key</string>
+    <string name="live_minutes">%d min</string>
+
+    <!-- ══ attendance ══ -->
+    <string name="attendance_title">Attendance</string>
+    <string name="attendance_teachers_only">Teachers only</string>
+    <string name="attendance_teachers_sub">The attendance register is part of the Teacher menu</string>
+    <string name="save_attendance">Save attendance</string>
+    <string name="attendance_saved">Attendance saved</string>
+    <string name="no_register">No students in this register yet</string>
+    <string name="add_student">Add student</string>
+    <string name="student_name">Student name</string>
+    <string name="roll_number">Roll number</string>
+
+    <!-- ══ school ══ -->
+    <string name="school_title">School</string>
+    <string name="school_address">Goshala Road, Muzaffarpur, Bihar 842002</string>
+
+    <!-- ══ settings ══ -->
+    <string name="settings_title">Settings</string>
+    <string name="check_update">Check for updates</string>
+    <string name="up_to_date">You\'re on the latest version</string>
+    <string name="update_found">Update available: %s</string>
+    <string name="share_app">Share XavierDrive</string>
+    <string name="section_appearance">Appearance</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System default</string>
+
+    <!-- ══ admin center ══ -->
+    <string name="adm_roles_hint">Every account, with its name and role — search to find anyone.</string>
+    <string name="adm_search_hint">Search name, email, class or roll no.</string>
+    <string name="adm_search_none">No matches — try another tab or spelling</string>
+    <string name="adm_search_elsewhere">Matches in other tabs: %s</string>
+    <string name="adm_roll_no">Roll no. %s</string>
+    <string name="adm_done">Done</string>
+    <string name="adm_failed">That didn\'t go through — please try again</string>
+    <string name="adm_end_confirm">End the live class for %s?</string>
+    <string name="adm_ending">Ending the class…</string>
+
+    <!-- ══ v1.2.0 ══ -->
+    <string name="home_files_desc">Study material for every class</string>
+    <string name="home_live_desc">Join the class in session</string>
+    <string name="home_notices_desc">School and class announcements</string>
+    <string name="home_logbook_desc">The class photo diary</string>
+    <string name="home_timetable_desc">Your weekly period schedule</string>
+    <string name="back">Back</string>
+    <string name="play">Play</string>
+    <string name="loading">…</string>
+    <string name="exporting">Preparing the export…</string>
+
+    <!-- AI v1.2.0 -->
+    <string name="ai_untitled">Untitled</string>
+    <string name="ai_search_chats">Search chats</string>
+    <string name="ai_search_none">No chats match that search</string>
+    <string name="ai_menu_rename">Rename chat</string>
+    <string name="ai_menu_pin">Pin chat</string>
+    <string name="ai_menu_unpin">Unpin chat</string>
+    <string name="ai_menu_summarize">Summarize chat</string>
+    <string name="ai_menu_delete">Delete chat</string>
+    <string name="ai_delete_staff_only">Only teachers, admins and developers can delete chats</string>
+    <string name="ai_summarize_prompt">Please summarize this entire conversation in a few bullet points.</string>
+    <string name="ai_att_too_big">That file is over the %s limit</string>
+    <string name="ai_font_title">Message font</string>
+    <string name="ai_font_size">Size</string>
+    <string name="ai_font_family">Style</string>
+    <string name="ai_color_title">Chat colour</string>
+    <string name="ai_memory_title">Memory</string>
+    <string name="ai_memory_sub">What XavierDrive AI remembers about you across chats, plus your custom instructions.</string>
+    <string name="ai_custom_instructions">Custom instructions — how should the AI respond?</string>
+    <string name="ai_memory_loading">Loading what the AI remembers…</string>
+    <string name="ai_memory_empty">Nothing saved yet — the AI learns as you chat.</string>
+    <string name="ai_memory_count">%d memories</string>
+    <string name="ai_memory_clear">Clear all memory</string>
+    <string name="ai_memory_clear_confirm">Forget everything the AI has learned about you?</string>
+    <string name="ai_instructions_saved">Custom instructions saved</string>
+    <string name="ai_export_all">Save my chats</string>
+    <string name="ai_export_all_sub">Every conversation, zipped to your Downloads</string>
+    <string name="ai_export_done">Saved</string>
+    <string name="ai_delete_all_staff">Students can export chats; deleting needs a teacher account.</string>
+
+    <!-- v1.2.0 school tools -->
+    <string name="all_dates">All dates</string>
+    <string name="all_sections">All sections</string>
+    <string name="section_short">Sec %s</string>
+    <string name="timetable_cell_hint">Subject (leave empty for a free period)</string>
+    <string name="timetable_edit_cell">%s</string>
+    <string name="timetable_save_confirm">Save this timetable?</string>
+    <string name="student_gmail">Student Gmail (optional)</string>
+    <string name="refresh">Refresh</string>
+
+    <!-- v1.2.0 admin screens -->
+    <string name="adm_files_title">Files</string>
+    <string name="adm_files_desc">Who uploaded which file, and when</string>
+    <string name="af_empty">No uploaded files yet</string>
+    <string name="af_unknown_uploader">unknown uploader</string>
+    <string name="adm_tab_students">Students</string>
+    <string name="adm_tab_teachers">Teachers</string>
+    <string name="adm_tab_admins">Admins</string>
+    <string name="adm_role_student">Student</string>
+    <string name="adm_role_teacher">Teacher</string>
+    <string name="adm_role_admin">Admin</string>
+    <string name="adm_role_btn">Role</string>
+    <string name="adm_you">you</string>
+    <string name="adm_locked_short">Locked</string>
+    <string name="adm_no_users">No accounts in this list yet</string>
+    <string name="adm_promote_teacher">Promote to Teacher</string>
+    <string name="adm_promote_admin">Promote to Admin</string>
+    <string name="adm_demote_teacher">Demote to Teacher</string>
+    <string name="adm_demote_student">Demote to Student</string>
+    <string name="adm_ban">Ban user</string>
+    <string name="adm_ban_confirm">Ban %s? They lose all access.</string>
+    <string name="adm_role_confirm">Apply this change to %s?</string>
+    <string name="adm_force_end">Force end</string>
+</resources>

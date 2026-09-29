@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MANAGE ROLES (v1.1.4) — Students · Teachers · Admins tabs with the
+     owner-ordered search bar ABOVE the tabs (works across all three),
+     and info lines under every account (students: name · class · roll;
+     teachers/admins: name). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/home_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="8dp"
+        android:paddingRight="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="4dp">
+
+        <ImageView
+            android:id="@+id/ar_back"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:scaleType="centerInside"
+            android:padding="10dp"
+            android:src="@drawable/ic_chevron"
+            android:rotation="180"
+            android:tint="@color/home_ink"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@null" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/adm_roles_title"
+                android:textSize="20sp"
+                android:fontFamily="@font/outfit_medium"
+                android:textColor="@color/home_ink" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="@string/adm_roles_hint"
+                android:textSize="12.5sp"
+                android:fontFamily="@font/inter_regular"
+                android:textColor="@color/home_muted" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/ar_busy"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- v1.1.4: the search bar — ABOVE all three tabs, so an email or
+         name can be hunted across Students / Teachers / Admins. -->
+    <LinearLayout
+        android:id="@+id/ar_search_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="10dp"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
+        android:background="@drawable/home_search_bg">
+
+        <ImageView
+            android:layout_width="17dp"
+            android:layout_height="17dp"
+            android:src="@drawable/ic_search"
+            android:tint="@color/home_muted"
+            android:contentDescription="@null" />
+
+        <EditText
+            android:id="@+id/ar_search"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:background="@null"
+            android:layout_marginLeft="8dp"
+            android:hint="@string/adm_search_hint"
+            android:textSize="13sp"
+            android:fontFamily="@font/inter_regular"
+            android:textColor="@color/home_ink"
+            android:textColorHint="@color/home_muted"
+            android:maxLines="1"
+            android:inputType="text" />
+
+        <ImageView
+            android:id="@+id/ar_search_clear"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:scaleType="centerInside"
+            android:padding="7dp"
+            android:src="@drawable/ic_close"
+            android:tint="@color/home_muted"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@null"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- cross-tab hint: when the search matches other tabs too -->
+    <TextView
+        android:id="@+id/ar_elsewhere"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:layout_marginTop="6dp"
+        android:textSize="11.5sp"
+        android:fontFamily="@font/inter_regular"
+        android:textColor="@color/home_muted"
+        android:visibility="gone" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:layout_marginTop="8dp">
+
+        <LinearLayout
+            android:id="@+id/ar_tabs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/ar_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="10dp"
+                android:paddingBottom="20dp" />
+        </ScrollView>
+
+        <LinearLayout
+            android:id="@+id/ar_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_gravity="center">
+
+            <ProgressBar
+                android:layout_width="36dp"
+                android:layout_height="36dp" />
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>

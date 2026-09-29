@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     UPDATE CHECKER v1.0.4 — live fluid nebula + stars, ZERO clutter.
+
+     Shows ONLY: logo (rock-stable), XAVIERDRIVE, the checking pulse /
+     update panel, and the version at the very bottom. The school line
+     and every other label were removed on purpose.
+
+     v1.0.9: FULLY THEME-AWARE — light mode shows a soft pastel fluid
+     with dark ink text; night keeps the classic dark cinema look.
+     ════════════════════════════════════════════════════════════════════ -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.stxaviers.app.FabricSpaceView
+        android:id="@+id/splash_fabric"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:fabricMode="splash" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="420dp"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingTop="64dp"
+            android:paddingBottom="76dp">
+
+            <!-- ── logo: NO rings, NO orbit dots, NO float — rock solid ── -->
+            <FrameLayout
+                android:layout_width="216dp"
+                android:layout_height="216dp">
+
+                <View
+                    android:id="@+id/logo_glow"
+                    android:layout_width="184dp"
+                    android:layout_height="184dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/splash_glow" />
+
+                <ImageView
+                    android:id="@+id/splash_logo"
+                    android:layout_width="150dp"
+                    android:layout_height="150dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/splash_logo"
+                    android:contentDescription="@string/app_name" />
+            </FrameLayout>
+
+            <!-- ── kinetic title (letters injected by SplashActivity) ── -->
+            <LinearLayout
+                android:id="@+id/title_row"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="18dp"
+                android:clipChildren="false"
+                android:clipToPadding="false" />
+
+            <!-- ── checking pulse (default state) ── -->
+            <LinearLayout
+                android:id="@+id/checking_box"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:layout_marginTop="44dp">
+
+                <LinearLayout
+                    android:id="@+id/dots_row"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/pulse_dot1"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginLeft="6dp"
+                        android:layout_marginRight="6dp"
+                        android:background="@drawable/orbit_dot" />
+
+                    <View
+                        android:id="@+id/pulse_dot2"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginLeft="6dp"
+                        android:layout_marginRight="6dp"
+                        android:background="@drawable/orbit_dot" />
+
+                    <View
+                        android:id="@+id/pulse_dot3"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginLeft="6dp"
+                        android:layout_marginRight="6dp"
+                        android:background="@drawable/orbit_dot" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/checking_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:textSize="15sp"
+                    android:textColor="@color/splash_label"
+                    android:letterSpacing="0.08"
+                    android:text="@string/checking_updates" />
+            </LinearLayout>
+
+            <!-- ── update panel: theme-aware glass ── -->
+            <com.stxaviers.app.GlowCardView
+                android:id="@+id/update_box"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="34dp"
+                android:layout_marginLeft="26dp"
+                android:layout_marginRight="26dp"
+                android:visibility="gone"
+                app:cardFill="@color/update_panel"
+                app:cardBorder="@color/update_panel_border"
+                app:cardRadius="26dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:padding="24dp">
+
+                    <TextView
+                        android:id="@+id/update_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="21sp"
+                        android:textColor="@color/splash_title"
+                        android:letterSpacing="0.02"
+                        android:text="@string/update_available" />
+
+                    <TextView
+                        android:id="@+id/update_version_size"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textSize="13sp"
+                        android:letterSpacing="0.10"
+                        android:textColor="@color/splash_meta"
+                        android:text="v — " />
+
+                    <TextView
+                        android:id="@+id/update_notes"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="3dp"
+                        android:gravity="center"
+                        android:maxLines="5"
+                        android:ellipsize="end"
+                        android:textColor="@color/splash_notes" />
+
+                    <!-- state A: download offer -->
+                    <Button
+                        android:id="@+id/btn_download"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="20dp"
+                        android:background="@drawable/cta_btn_bg"
+                        android:stateListAnimator="@null"
+                        android:textSize="14sp"
+                        android:letterSpacing="0.06"
+                        android:textAllCaps="false"
+                        android:textColor="@color/cta_ink"
+                        android:text="@string/download_update" />
+
+                    <!-- state B: live progress -->
+                    <LinearLayout
+                        android:id="@+id/progress_box"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="20dp"
+                        android:visibility="gone">
+
+                        <ProgressBar
+                            android:id="@+id/update_progress"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="10dp"
+                            android:max="100"
+                            android:progress="0"
+                            android:progressDrawable="@drawable/update_progress"
+                            android:indeterminate="false" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="12dp">
+
+                            <TextView
+                                android:id="@+id/progress_percent"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:textSize="22sp"
+                                android:textColor="@color/splash_title"
+                                android:text="0%" />
+
+                            <TextView
+                                android:id="@+id/progress_speed"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textSize="12sp"
+                                android:textColor="@color/splash_notes"
+                                android:text="— MB/s" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="4dp">
+
+                            <TextView
+                                android:id="@+id/progress_bytes"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:textSize="12sp"
+                                android:textColor="@color/splash_notes"
+                                android:text="0.0 MB / — MB" />
+
+                            <TextView
+                                android:id="@+id/progress_eta"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textSize="12sp"
+                                android:textColor="@color/splash_notes"
+                                android:text="" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/btn_cancel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_horizontal"
+                            android:layout_marginTop="14dp"
+                            android:padding="8dp"
+                            android:background="@drawable/text_btn_bg"
+                            android:textSize="12sp"
+                            android:letterSpacing="0.10"
+                            android:textColor="@color/splash_notes"
+                            android:text="@string/cancel" />
+                    </LinearLayout>
+
+                    <!-- state C: downloaded, ready to install -->
+                    <LinearLayout
+                        android:id="@+id/install_box"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal"
+                        android:layout_marginTop="20dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/install_status"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="13sp"
+                            android:letterSpacing="0.08"
+                            android:gravity="center"
+                            android:textColor="@color/splash_meta"
+                            android:text="@string/downloaded_ready" />
+
+                        <TextView
+                            android:id="@+id/perm_hint"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:textSize="11sp"
+                            android:lineSpacingExtra="2dp"
+                            android:gravity="center"
+                            android:textColor="@color/splash_notes"
+                            android:text="@string/install_perms_hint"
+                            android:visibility="gone" />
+
+                        <Button
+                            android:id="@+id/btn_install"
+                            android:layout_width="match_parent"
+                            android:layout_height="52dp"
+                            android:layout_marginTop="16dp"
+                            android:background="@drawable/cta_btn_bg"
+                            android:stateListAnimator="@null"
+                            android:textSize="14sp"
+                            android:letterSpacing="0.06"
+                            android:textAllCaps="false"
+                            android:textColor="@color/cta_ink"
+                            android:text="@string/install_update" />
+                    </LinearLayout>
+
+                    <!-- error line -->
+                    <TextView
+                        android:id="@+id/update_error"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:textSize="12sp"
+                        android:gravity="center"
+                        android:textColor="@color/splash_error"
+                        android:visibility="gone"
+                        android:text="@string/download_failed" />
+
+                    <!-- later (always available) -->
+                    <TextView
+                        android:id="@+id/btn_later"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:padding="8dp"
+                        android:background="@drawable/text_btn_bg"
+                        android:textSize="13sp"
+                        android:letterSpacing="0.12"
+                        android:textColor="@color/splash_notes"
+                        android:text="@string/later" />
+                </LinearLayout>
+            </com.stxaviers.app.GlowCardView>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ── the ONLY footer: the version (set live from PackageManager) ── -->
+    <TextView
+        android:id="@+id/version_label"
+        android:textSize="15sp"
+        android:letterSpacing="0.10"
+        android:textColor="@color/splash_footer"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="26dp"
+        android:text="@string/version_label" />
+</FrameLayout>

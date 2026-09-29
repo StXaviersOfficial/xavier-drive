@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     FILES (v1.1.2) — the Drive library, a school tool screen (back
+     header, no bottom bar). Class-group headers + thin separators
+     section the list; the empty state is a full-width card.
+     ════════════════════════════════════════════════════════════════════ -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/home_bg">
+
+    <!-- header + back -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="8dp"
+        android:paddingRight="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="4dp">
+
+        <ImageView
+            android:id="@+id/files_back"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:scaleType="centerInside"
+            android:padding="10dp"
+            android:src="@drawable/ic_chevron"
+            android:rotation="180"
+            android:tint="@color/home_ink"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@null" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/screen_files"
+                android:textSize="20sp"
+                android:fontFamily="@font/outfit_medium"
+                android:textColor="@color/home_ink" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="@string/screen_files_sub"
+                android:textSize="12.5sp"
+                android:fontFamily="@font/inter_regular"
+                android:textColor="@color/home_muted" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <ScrollView
+        android:id="@+id/files_head"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- search -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginLeft="16dp"
+                android:layout_marginRight="16dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/input_bg">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="left|center_vertical"
+                    android:layout_marginLeft="14dp"
+                    android:src="@drawable/ic_search"
+                    android:tint="@color/home_search_icon"
+                    android:contentDescription="@null" />
+
+                <EditText
+                    android:id="@+id/files_search"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingLeft="44dp"
+                    android:paddingRight="16dp"
+                    android:background="@null"
+                    android:hint="@string/search_files"
+                    android:textSize="14sp"
+                    android:textColor="@color/home_ink"
+                    android:textColorHint="@color/home_muted"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:maxLines="1" />
+            </FrameLayout>
+
+            <!-- class + subject spinners -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginLeft="16dp"
+                android:layout_marginRight="16dp"
+                android:layout_marginTop="10dp">
+
+                <Spinner
+                    android:id="@+id/files_class"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/chip_off"
+                    android:popupBackground="@drawable/row_card" />
+
+                <Space
+                    android:layout_width="10dp"
+                    android:layout_height="1dp" />
+
+                <Spinner
+                    android:id="@+id/files_subject"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/chip_off"
+                    android:popupBackground="@drawable/row_card" />
+            </LinearLayout>
+
+            <!-- type chips -->
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:layout_marginTop="10dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingLeft="16dp"
+                    android:paddingRight="16dp">
+
+                    <TextView
+                        android:id="@+id/chip_all"
+                        style="@style/FilterChip"
+                        android:text="@string/filter_all" />
+
+                    <TextView
+                        android:id="@+id/chip_pdf"
+                        style="@style/FilterChip"
+                        android:text="@string/filter_pdf" />
+
+                    <TextView
+                        android:id="@+id/chip_docs"
+                        style="@style/FilterChip"
+                        android:text="@string/filter_docs" />
+
+                    <TextView
+                        android:id="@+id/chip_images"
+                        style="@style/FilterChip"
+                        android:text="@string/filter_images" />
+
+                    <TextView
+                        android:id="@+id/chip_video"
+                        style="@style/FilterChip"
+                        android:text="@string/filter_video" />
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <!-- count line -->
+            <TextView
+                android:id="@+id/files_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="16dp"
+                android:layout_marginRight="16dp"
+                android:layout_marginTop="12dp"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter_medium"
+                android:textColor="@color/home_muted"
+                android:text="@string/screen_files" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- the list (with loading + empty states) -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ListView
+            android:id="@+id/files_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="16dp"
+            android:clipToPadding="false"
+            android:scrollbars="none"
+            android:listSelector="@android:color/transparent" />
+
+        <LinearLayout
+            android:id="@+id/files_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_gravity="center">
+
+            <ProgressBar
+                android:layout_width="36dp"
+                android:layout_height="36dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textSize="13sp"
+                android:textColor="@color/home_muted"
+                android:text="@string/files_loading" />
+        </LinearLayout>
+
+        <!-- empty state — full width, composed like a real card -->
+        <LinearLayout
+            android:id="@+id/files_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:layout_gravity="center"
+            android:layout_marginLeft="24dp"
+            android:layout_marginRight="24dp"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp"
+            android:paddingTop="26dp"
+            android:paddingBottom="26dp"
+            android:background="@drawable/row_card"
+            android:visibility="gone">
+
+            <FrameLayout
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/home_tile_bg">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_folder"
+                    android:tint="@color/home_tile_ink"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:gravity="center_horizontal"
+                android:textSize="15sp"
+                android:fontFamily="@font/outfit_medium"
+                android:textColor="@color/home_ink"
+                android:text="@string/files_empty" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:gravity="center_horizontal"
+                android:textSize="12.5sp"
+                android:fontFamily="@font/inter_regular"
+                android:lineSpacingExtra="2dp"
+                android:textColor="@color/home_muted"
+                android:text="@string/files_empty_sub" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/files_error"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/files_error_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="@color/danger" />
+
+            <TextView
+                android:id="@+id/files_retry"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:paddingLeft="20dp"
+                android:paddingRight="20dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:background="@drawable/btn_outline"
+                android:textSize="13sp"
+                android:fontFamily="@font/inter_medium"
+                android:textColor="@color/home_brand"
+                android:text="@string/retry" />
+        </LinearLayout>
+
+        <!-- teacher upload FAB -->
+        <FrameLayout
+            android:id="@+id/files_fab"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_gravity="bottom|right"
+            android:layout_marginRight="16dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/fab_tonal"
+            android:foreground="@drawable/home_ripple_circle"
+            android:elevation="6dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_upload"
+                android:tint="#FFFFFF"
+                android:contentDescription="@null" />
+        </FrameLayout>
+    </FrameLayout>
+</LinearLayout>

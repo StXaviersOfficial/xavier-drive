@@ -1,0 +1,516 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     XAVIERDRIVE AI — v1.2.0, the full-screen experience.
+
+     App bar: hamburger (chat drawer) | THE CHAT'S OWN TITLE ("Untitled"
+     until the AI names it after the first reply — owner order) | cross.
+
+     Messages render Claude-style (AI full-width, user bubbles) with
+     selectable text and icon-only Copy / Listen / Regenerate actions;
+     the composer is [+] [input] [mic] [send] — the send button is GREY
+     when the box is empty and turns BLUE the moment there is something
+     to send; the mic is plain by default and lights up blue with a
+     waveform while listening.
+
+     Drawer: search bar + compact new-chat + settings icons, square
+     chat rows, per-chat 3-dot menus. No "synced with the website" text
+     anywhere (owner order).
+     ════════════════════════════════════════════════════════════════════ -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/home_bg">
+
+        <!-- app bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingLeft="6dp"
+            android:paddingRight="8dp">
+
+            <FrameLayout
+                android:id="@+id/ai_menu"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/ai_history_cd">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_menu"
+                    android:tint="@color/home_ink"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
+            <!-- the CHAT'S title — "Untitled" until the AI names it -->
+            <TextView
+                android:id="@+id/ai_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginLeft="4dp"
+                android:textSize="17sp"
+                android:fontFamily="@font/outfit_semibold"
+                android:textColor="@color/home_ink"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="@string/ai_untitled" />
+
+            <!-- cross — exits the AI and returns to the Home tab -->
+            <FrameLayout
+                android:id="@+id/ai_close"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="@drawable/home_ripple_circle"
+                android:contentDescription="@string/ai_close_cd">
+
+                <ImageView
+                    android:layout_width="21dp"
+                    android:layout_height="21dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_close"
+                    android:tint="@color/home_ink"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/home_hairline" />
+
+        <!-- messages + empty state -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <ScrollView
+                android:id="@+id/ai_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scrollbars="none"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:id="@+id/ai_msgs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingLeft="16dp"
+                    android:paddingRight="16dp"
+                    android:paddingTop="16dp"
+                    android:paddingBottom="10dp" />
+            </ScrollView>
+
+            <!-- empty state — a quiet start, no greeting bubble -->
+            <LinearLayout
+                android:id="@+id/ai_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:layout_gravity="center"
+                android:paddingLeft="32dp"
+                android:paddingRight="32dp">
+
+                <FrameLayout
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:background="@drawable/home_tile_bg">
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_sparkle"
+                        android:tint="@color/home_tile_ink"
+                        android:contentDescription="@null" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:textSize="17sp"
+                    android:fontFamily="@font/outfit_medium"
+                    android:textColor="@color/home_ink"
+                    android:text="@string/ai_empty_title" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center_horizontal"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/inter_regular"
+                    android:textColor="@color/home_muted"
+                    android:text="@string/ai_empty_sub" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="18dp">
+
+                    <TextView
+                        android:id="@+id/ai_sug1"
+                        style="@style/AiSuggestion"
+                        android:text="@string/ai_sug_1" />
+
+                    <TextView
+                        android:id="@+id/ai_sug2"
+                        style="@style/AiSuggestion"
+                        android:text="@string/ai_sug_2" />
+
+                    <TextView
+                        android:id="@+id/ai_sug3"
+                        style="@style/AiSuggestion"
+                        android:text="@string/ai_sug_3" />
+                </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
+
+        <!-- attachments preview strip -->
+        <HorizontalScrollView
+            android:id="@+id/ai_attach_strip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:visibility="gone"
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp">
+
+            <LinearLayout
+                android:id="@+id/ai_attach_row"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="8dp"
+                android:paddingBottom="2dp" />
+        </HorizontalScrollView>
+
+        <!-- active mode strip (deep research / image) -->
+        <LinearLayout
+            android:id="@+id/ai_research_strip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="2dp">
+
+            <TextView
+                android:id="@+id/ai_research_chip"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:gravity="center_vertical"
+                android:paddingLeft="12dp"
+                android:background="@drawable/home_badge_chip"
+                android:textSize="11.5sp"
+                android:fontFamily="@font/inter_medium"
+                android:textColor="@color/home_badge_ink"
+                android:text="@string/ai_research_on" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginLeft="8dp"
+                android:textSize="11sp"
+                android:fontFamily="@font/inter_regular"
+                android:textColor="@color/home_muted"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="@string/ai_research_hint" />
+
+            <FrameLayout
+                android:id="@+id/ai_research_off"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="@drawable/home_ripple_circle"
+                android:contentDescription="@string/close">
+
+                <ImageView
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_close"
+                    android:tint="@color/home_muted"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- composer -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/home_bg"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="10dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical|bottom"
+                android:background="@drawable/ai_input_pill"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp">
+
+                <!-- plus — opens the attach / tools menu -->
+                <FrameLayout
+                    android:id="@+id/ai_plus"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="@drawable/home_ripple_circle"
+                    android:contentDescription="@string/ai_attach_cd">
+
+                    <ImageView
+                        android:layout_width="21dp"
+                        android:layout_height="21dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_add"
+                        android:tint="@color/home_tile_ink"
+                        android:contentDescription="@null" />
+                </FrameLayout>
+
+                <EditText
+                    android:id="@+id/ai_input"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="42dp"
+                    android:background="@null"
+                    android:paddingLeft="6dp"
+                    android:paddingRight="6dp"
+                    android:hint="@string/ai_hint"
+                    android:textSize="14.5sp"
+                    android:fontFamily="@font/inter_regular"
+                    android:textColor="@color/home_ink"
+                    android:textColorHint="@color/home_muted"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:maxLines="6"
+                    android:imeOptions="actionSend" />
+
+                <!-- mic — plain by default; blue + waveform while listening -->
+                <FrameLayout
+                    android:id="@+id/ai_mic"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="@string/ai_mic_cd">
+
+                    <ImageView
+                        android:id="@+id/ai_mic_icon"
+                        android:layout_width="19dp"
+                        android:layout_height="19dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_mic"
+                        android:tint="@color/home_tile_ink"
+                        android:contentDescription="@null" />
+                </FrameLayout>
+
+                <!-- send — GREY when the box is empty, BLUE when ready -->
+                <FrameLayout
+                    android:id="@+id/ai_send"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:layout_marginLeft="6dp"
+                    android:background="@drawable/ai_send_idle"
+                    android:foreground="@drawable/home_ripple_circle">
+
+                    <ImageView
+                        android:id="@+id/ai_send_icon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_send"
+                        android:tint="@color/home_tile_ink"
+                        android:contentDescription="@null" />
+                </FrameLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ── chat history drawer (scrim + slide panel) ──────────────────── -->
+    <FrameLayout
+        android:id="@+id/ai_drawer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:elevation="12dp">
+
+        <View
+            android:id="@+id/drawer_scrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/drawer_scrim" />
+
+        <LinearLayout
+            android:id="@+id/drawer_panel"
+            android:layout_width="320dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:layout_gravity="start"
+            android:background="@color/home_surface"
+            android:paddingTop="14dp"
+            android:paddingBottom="10dp">
+
+            <!-- header: title + compact new-chat + settings -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingLeft="18dp"
+                android:paddingRight="10dp">
+
+                <FrameLayout
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/home_ai_btn_bg">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_sparkle"
+                        android:tint="#FFFFFF"
+                        android:contentDescription="@null" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginLeft="10dp"
+                    android:textSize="16sp"
+                    android:fontFamily="@font/outfit_semibold"
+                    android:textColor="@color/home_ink"
+                    android:text="@string/ai_history_title" />
+
+                <!-- new chat — compact, beside the title (owner order) -->
+                <FrameLayout
+                    android:id="@+id/drawer_new"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/home_ai_btn_bg"
+                    android:foreground="@drawable/home_ripple_circle"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="@string/new_chat">
+
+                    <ImageView
+                        android:layout_width="17dp"
+                        android:layout_height="17dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_add"
+                        android:tint="#FFFFFF"
+                        android:contentDescription="@null" />
+                </FrameLayout>
+
+                <!-- AI settings -->
+                <FrameLayout
+                    android:id="@+id/drawer_settings"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginLeft="8dp"
+                    android:background="@drawable/home_tile_bg"
+                    android:foreground="@drawable/home_ripple_circle"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="@string/ai_settings">
+
+                    <ImageView
+                        android:layout_width="17dp"
+                        android:layout_height="17dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_settings"
+                        android:tint="@color/home_tile_ink"
+                        android:contentDescription="@null" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <!-- search chats -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginLeft="14dp"
+                android:layout_marginRight="14dp"
+                android:layout_marginTop="12dp"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:background="@drawable/home_search_bg">
+
+                <ImageView
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
+                    android:src="@drawable/ic_search"
+                    android:tint="@color/home_muted"
+                    android:contentDescription="@null" />
+
+                <EditText
+                    android:id="@+id/drawer_search"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginLeft="8dp"
+                    android:background="@null"
+                    android:hint="@string/ai_search_chats"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/inter_regular"
+                    android:textColor="@color/home_ink"
+                    android:textColorHint="@color/home_muted"
+                    android:maxLines="1"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text" />
+            </LinearLayout>
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:scrollbars="none"
+                android:layout_marginTop="6dp">
+
+                <LinearLayout
+                    android:id="@+id/drawer_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingLeft="10dp"
+                    android:paddingRight="10dp"
+                    android:paddingBottom="8dp" />
+            </ScrollView>
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

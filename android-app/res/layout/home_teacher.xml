@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     TEACHER MENU — v2.0.0.
+
+     The ONLY place uploads and class-content tools live. Admins and
+     developers must switch here to upload anything (owner order). Two
+     grouped list cards, Google-Settings style: 40dp tonal icon, 15sp
+     Inter Medium title, 11.5sp muted description, chevron.
+     ════════════════════════════════════════════════════════════════════ -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:paddingTop="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:fontFamily="@font/outfit_semibold"
+            android:textColor="@color/home_ink"
+            android:text="@string/ws_teacher_tools" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="12sp"
+            android:fontFamily="@font/inter_regular"
+            android:textColor="@color/home_muted"
+            android:text="@string/ws_teacher_sub" />
+    </LinearLayout>
+
+    <!-- section: class material -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="20dp"
+        android:textSize="12sp"
+        android:fontFamily="@font/inter_medium"
+        android:letterSpacing="0.06"
+        android:textColor="@color/home_muted"
+        android:text="@string/section_class_material" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/home_card_bg"
+        android:elevation="1dp">
+
+        <LinearLayout
+            android:id="@+id/tch_upload"
+            style="@style/MenuRow">
+
+            <FrameLayout style="@style/MenuRowIcon">
+
+                <ImageView
+                    style="@style/MenuRowIconImage"
+                    android:src="@drawable/ic_upload" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/MenuRowText">
+
+                <TextView
+                    style="@style/MenuRowTitle"
+                    android:text="@string/tch_upload_title" />
+
+                <TextView
+                    style="@style/MenuRowDesc"
+                    android:text="@string/tch_upload_desc" />
+            </LinearLayout>
+
+            <ImageView style="@style/MenuRowChevron" />
+        </LinearLayout>
+
+        <View style="@style/MenuRowDivider" />
+
+        <LinearLayout
+            android:id="@+id/tch_notice"
+            style="@style/MenuRow">
+
+            <FrameLayout style="@style/MenuRowIcon">
+
+                <ImageView
+                    style="@style/MenuRowIconImage"
+                    android:src="@drawable/ic_megaphone" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/MenuRowText">
+
+                <TextView
+                    style="@style/MenuRowTitle"
+                    android:text="@string/tch_notice_title" />
+
+                <TextView
+                    style="@style/MenuRowDesc"
+                    android:text="@string/tch_notice_desc" />
+            </LinearLayout>
+
+            <ImageView style="@style/MenuRowChevron" />
+        </LinearLayout>
+
+        <View style="@style/MenuRowDivider" />
+
+        <LinearLayout
+            android:id="@+id/tch_logbook"
+            style="@style/MenuRow">
+
+            <FrameLayout style="@style/MenuRowIcon">
+
+                <ImageView
+                    style="@style/MenuRowIconImage"
+                    android:src="@drawable/ic_camera" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/MenuRowText">
+
+                <TextView
+                    style="@style/MenuRowTitle"
+                    android:text="@string/tch_logbook_title" />
+
+                <TextView
+                    style="@style/MenuRowDesc"
+                    android:text="@string/tch_logbook_desc" />
+            </LinearLayout>
+
+            <ImageView style="@style/MenuRowChevron" />
+        </LinearLayout>
+
+        <View style="@style/MenuRowDivider" />
+
+        <LinearLayout
+            android:id="@+id/tch_timetable"
+            style="@style/MenuRow">
+
+            <FrameLayout style="@style/MenuRowIcon">
+
+                <ImageView
+                    style="@style/MenuRowIconImage"
+                    android:src="@drawable/ic_calendar" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/MenuRowText">
+
+                <TextView
+                    style="@style/MenuRowTitle"
+                    android:text="@string/tch_timetable_title" />
+
+                <TextView
+                    style="@style/MenuRowDesc"
+                    android:text="@string/tch_timetable_desc" />
+            </LinearLayout>
+
+            <ImageView style="@style/MenuRowChevron" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- section: class management -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="24dp"
+        android:textSize="12sp"
+        android:fontFamily="@font/inter_medium"
+        android:letterSpacing="0.06"
+        android:textColor="@color/home_muted"
+        android:text="@string/section_class_management" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/home_card_bg"
+        android:elevation="1dp">
+
+        <LinearLayout
+            android:id="@+id/tch_attendance"
+            style="@style/MenuRow">
+
+            <FrameLayout style="@style/MenuRowIcon">
+
+                <ImageView
+                    style="@style/MenuRowIconImage"
+                    android:src="@drawable/ic_check" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/MenuRowText">
+
+                <TextView
+                    style="@style/MenuRowTitle"
+                    android:text="@string/tch_attendance_title" />
+
+                <TextView
+                    style="@style/MenuRowDesc"
+                    android:text="@string/tch_attendance_desc" />
+            </LinearLayout>
+
+            <ImageView style="@style/MenuRowChevron" />
+        </LinearLayout>
+
+        <View style="@style/MenuRowDivider" />
+
+        <LinearLayout
+            android:id="@+id/tch_live"
+            style="@style/MenuRow">
+
+            <FrameLayout style="@style/MenuRowIcon">
+
+                <ImageView
+                    style="@style/MenuRowIconImage"
+                    android:src="@drawable/ic_live" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/MenuRowText">
+
+                <TextView
+                    style="@style/MenuRowTitle"
+                    android:text="@string/tch_live_title" />
+
+                <TextView
+                    style="@style/MenuRowDesc"
+                    android:text="@string/tch_live_desc" />
+            </LinearLayout>
+
+            <ImageView style="@style/MenuRowChevron" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- quiet note -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="16dp"
+        android:textSize="11.5sp"
+        android:fontFamily="@font/inter_regular"
+        android:textColor="@color/home_muted"
+        android:alpha="0.9"
+        android:text="@string/ws_teacher_note" />
+</LinearLayout>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- FabricSpaceView: the animated space-fabric background engine.
+         login  = calm deep-space silk (theme aware)
+         splash = energetic hue-cycling fluid nebula (always dark) -->
+    <declare-styleable name="FabricSpaceView">
+        <attr name="fabricMode" format="enum">
+            <enum name="login" value="0"/>
+            <enum name="splash" value="1"/>
+        </attr>
+    </declare-styleable>
+
+    <!-- GlowCardView: allow forcing a fill/border palette (the splash
+         update panel lives on an always-dark canvas, regardless of the
+         system theme, so it forces the dark glass colors). -->
+    <declare-styleable name="GlowCardView">
+        <attr name="cardFill" format="color"/>
+        <attr name="cardBorder" format="color"/>
+        <attr name="cardRadius" format="dimension"/>
+    </declare-styleable>
+</resources>

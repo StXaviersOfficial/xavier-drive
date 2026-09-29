@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.2.0 timetable cell — TODAY's column gets the brand tint. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <corners android:radius="10dp" />
+    <solid android:color="@color/home_tile_bg" />
+    <stroke android:width="1dp" android:color="@color/home_brand" />
+</shape>

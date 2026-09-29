@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     XAVIERDRIVE HOME SHELL — v1.1.2, the website-aligned top bar.
+
+     [ menu switcher ]   XAVIERDRIVE (animated wordmark)   [ avatar ]
+
+     The owner's spec: the role changer sits on the LEFT of the wordmark
+     (designed, not animated); the wordmark is top-centre in a good type
+     face with a slow light sweep (WordmarkView); the account photo sits
+     on the RIGHT. No settings icon (settings live in Profile), no school
+     subtitle, no version footer — the screen is clean and professional.
+
+     The scroll area inflates the ACTIVE MENU: home_student / home_teacher
+     / home_admin / home_dev.
+     ════════════════════════════════════════════════════════════════════ -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/home_bg">
+
+    <!-- ── fixed top bar ────────────────────────────────────────────────
+         v1.2.0 (owner order): the wordmark is EXACTLY centred, always —
+         it overlays a FrameLayout, so the workspace chip on the start edge
+         can never push it off-centre. The account photo moved down into
+         the greeting block (student menu) / stays off this bar entirely.
+         The chip remains here for the staff menus; students never see it. -->
+    <FrameLayout
+        android:id="@+id/home_topbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="60dp"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
+
+        <!-- menu (workspace) switcher — START edge; hidden for students -->
+        <LinearLayout
+            android:id="@+id/ws_chip"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_gravity="start|center_vertical"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp"
+            android:background="@drawable/home_role_chip_bg"
+            android:foreground="@drawable/home_ripple_pill"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="@string/ws_switch_cd">
+
+            <ImageView
+                android:layout_width="15dp"
+                android:layout_height="15dp"
+                android:src="@drawable/ic_swap"
+                android:tint="@color/home_role_ink"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:id="@+id/ws_chip_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="6dp"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter_medium"
+                android:textColor="@color/home_role_ink"
+                android:text="@string/ws_student" />
+        </LinearLayout>
+
+        <!-- the wordmark — dead-centre, Outfit SemiBold, slow light sweep.
+             Bigger (23sp) per the owner's v1.2.0 pass. -->
+        <com.stxaviers.app.WordmarkView
+            android:id="@+id/home_wordmark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textSize="23sp"
+            android:fontFamily="@font/outfit_semibold"
+            android:letterSpacing="0.01"
+            android:textColor="@color/home_ink"
+            android:text="@string/app_name" />
+    </FrameLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/home_hairline" />
+
+    <!-- ── scrollable per-menu content ───────────────────────────────── -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:scrollbars="none"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="24dp">
+
+            <!-- the ACTIVE MENU inflates here -->
+            <FrameLayout
+                android:id="@+id/home_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ── bottom navigation: Home · AI · Profile ────────────────────── -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/home_hairline" />
+
+    <include layout="@layout/include_bottom_nav" />
+</LinearLayout>

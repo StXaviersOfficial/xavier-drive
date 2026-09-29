@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Send button, EMPTY state: quiet grey circle (owner order v1.2.0 —
+     grey when there is nothing to send, blue the moment there is). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/home_tile_bg" />
+</shape>

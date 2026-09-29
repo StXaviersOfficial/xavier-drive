@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Leaving the full-screen AI experience: settle down + fade out. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:anim/accelerate_interpolator">
+    <translate android:fromYDelta="0"
+        android:toYDelta="8%"
+        android:duration="260" />
+    <alpha android:fromAlpha="1.0"
+        android:toAlpha="0.0"
+        android:duration="260" />
+</set>

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ADMIN LIVE OVERSIGHT (v1.2.0) — its own screen, its own design. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/home_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="8dp"
+        android:paddingRight="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="4dp">
+
+        <ImageView
+            android:id="@+id/al_back"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:scaleType="centerInside"
+            android:padding="10dp"
+            android:src="@drawable/ic_chevron"
+            android:rotation="180"
+            android:tint="@color/home_ink"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@null" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/adm_live_title"
+                android:textSize="20sp"
+                android:fontFamily="@font/outfit_medium"
+                android:textColor="@color/home_ink" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="@string/adm_live_desc"
+                android:textSize="12.5sp"
+                android:fontFamily="@font/inter_regular"
+                android:textColor="@color/home_muted" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/al_refresh"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/home_tile_bg"
+            android:foreground="@drawable/home_ripple_chip"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="@string/refresh">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_refresh"
+                android:tint="@color/home_tile_ink"
+                android:contentDescription="@null" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/al_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="20dp" />
+        </ScrollView>
+
+        <LinearLayout
+            android:id="@+id/al_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_gravity="center">
+
+            <ProgressBar
+                android:layout_width="36dp"
+                android:layout_height="36dp" />
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>

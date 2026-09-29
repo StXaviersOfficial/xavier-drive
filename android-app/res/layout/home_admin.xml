@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     ADMIN MENU — v1.2.0. The owner's order: the notice board is GONE;
+     two dedicated screens lead (Live classes, Files oversight) and
+     Manage roles sits at the very bottom. Each opens its own
+     full-screen activity with its own UI.
+     ════════════════════════════════════════════════════════════════════ -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:paddingTop="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:fontFamily="@font/outfit_semibold"
+            android:textColor="@color/home_ink"
+            android:text="@string/ws_admin_center" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="12sp"
+            android:fontFamily="@font/inter_regular"
+            android:textColor="@color/home_muted"
+            android:text="@string/ws_admin_sub" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="20dp"
+        android:textSize="12sp"
+        android:fontFamily="@font/inter_medium"
+        android:letterSpacing="0.06"
+        android:textColor="@color/home_muted"
+        android:text="@string/section_oversight" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/home_card_bg"
+        android:elevation="1dp">
+
+        <LinearLayout
+            android:id="@+id/adm_live"
+            style="@style/MenuRow">
+
+            <FrameLayout style="@style/MenuRowIcon">
+
+                <ImageView
+                    style="@style/MenuRowIconImage"
+                    android:src="@drawable/ic_live" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/MenuRowText">
+
+                <TextView
+                    style="@style/MenuRowTitle"
+                    android:text="@string/adm_live_title" />
+
+                <TextView
+                    style="@style/MenuRowDesc"
+                    android:text="@string/adm_live_desc" />
+            </LinearLayout>
+
+            <ImageView style="@style/MenuRowChevron" />
+        </LinearLayout>
+
+        <View style="@style/MenuRowDivider" />
+
+        <LinearLayout
+            android:id="@+id/adm_files"
+            style="@style/MenuRow">
+
+            <FrameLayout style="@style/MenuRowIcon">
+
+                <ImageView
+                    style="@style/MenuRowIconImage"
+                    android:src="@drawable/ic_folder" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/MenuRowText">
+
+                <TextView
+                    style="@style/MenuRowTitle"
+                    android:text="@string/adm_files_title" />
+
+                <TextView
+                    style="@style/MenuRowDesc"
+                    android:text="@string/adm_files_desc" />
+            </LinearLayout>
+
+            <ImageView style="@style/MenuRowChevron" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Manage roles — at the VERY BOTTOM (owner order v1.2.0) -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="24dp"
+        android:textSize="12sp"
+        android:fontFamily="@font/inter_medium"
+        android:letterSpacing="0.06"
+        android:textColor="@color/home_muted"
+        android:text="@string/section_people" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/home_card_bg"
+        android:elevation="1dp">
+
+        <LinearLayout
+            android:id="@+id/adm_roles"
+            style="@style/MenuRow">
+
+            <FrameLayout style="@style/MenuRowIcon">
+
+                <ImageView
+                    style="@style/MenuRowIconImage"
+                    android:src="@drawable/ic_people" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/MenuRowText">
+
+                <TextView
+                    style="@style/MenuRowTitle"
+                    android:text="@string/adm_roles_title" />
+
+                <TextView
+                    style="@style/MenuRowDesc"
+                    android:text="@string/adm_roles_desc" />
+            </LinearLayout>
+
+            <ImageView style="@style/MenuRowChevron" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="16dp"
+        android:textSize="11.5sp"
+        android:fontFamily="@font/inter_regular"
+        android:textColor="@color/home_muted"
+        android:alpha="0.9"
+        android:text="@string/ws_admin_note" />
+</LinearLayout>

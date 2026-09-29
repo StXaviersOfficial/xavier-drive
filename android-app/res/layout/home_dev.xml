@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     DEVELOPER MENU — v2.0.0. Live diagnostics: the account's true server
+     rank (the fix verification surface), build facts, and the update
+     service check with latency. Plus a shortcut to the admin center.
+     ════════════════════════════════════════════════════════════════════ -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:paddingTop="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:fontFamily="@font/outfit_semibold"
+            android:textColor="@color/home_ink"
+            android:text="@string/ws_developer" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="12sp"
+            android:fontFamily="@font/inter_regular"
+            android:textColor="@color/home_muted"
+            android:text="@string/ws_developer_sub" />
+    </LinearLayout>
+
+    <!-- account / rank card -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="20dp"
+        android:textSize="12sp"
+        android:fontFamily="@font/inter_medium"
+        android:letterSpacing="0.06"
+        android:textColor="@color/home_muted"
+        android:text="@string/section_account_rank" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/home_card_bg"
+        android:elevation="1dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
+
+        <LinearLayout style="@style/DevRow">
+
+            <TextView
+                style="@style/DevRowKey"
+                android:text="@string/dev_email" />
+
+            <TextView
+                android:id="@+id/dev_email"
+                style="@style/DevRowVal" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/DevRow">
+
+            <TextView
+                style="@style/DevRowKey"
+                android:text="@string/dev_rank" />
+
+            <TextView
+                android:id="@+id/dev_rank"
+                style="@style/DevRowVal" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/DevRow">
+
+            <TextView
+                style="@style/DevRowKey"
+                android:text="@string/dev_admin_flag" />
+
+            <TextView
+                android:id="@+id/dev_admin"
+                style="@style/DevRowVal" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/DevRow">
+
+            <TextView
+                style="@style/DevRowKey"
+                android:text="@string/dev_dev_flag" />
+
+            <TextView
+                android:id="@+id/dev_developer"
+                style="@style/DevRowVal" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/DevRow">
+
+            <TextView
+                style="@style/DevRowKey"
+                android:text="@string/dev_access_level" />
+
+            <TextView
+                android:id="@+id/dev_level"
+                style="@style/DevRowVal" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/DevRow">
+
+            <TextView
+                style="@style/DevRowKey"
+                android:text="@string/dev_active_menu" />
+
+            <TextView
+                android:id="@+id/dev_ws"
+                style="@style/DevRowVal" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- build / service card -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="24dp"
+        android:textSize="12sp"
+        android:fontFamily="@font/inter_medium"
+        android:letterSpacing="0.06"
+        android:textColor="@color/home_muted"
+        android:text="@string/section_build" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/home_card_bg"
+        android:elevation="1dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
+
+        <LinearLayout style="@style/DevRow">
+
+            <TextView
+                style="@style/DevRowKey"
+                android:text="@string/dev_version" />
+
+            <TextView
+                android:id="@+id/dev_version"
+                style="@style/DevRowVal" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/DevRow">
+
+            <TextView
+                style="@style/DevRowKey"
+                android:text="@string/dev_package" />
+
+            <TextView
+                style="@style/DevRowVal"
+                android:text="com.stxaviers.app" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/DevRow">
+
+            <TextView
+                style="@style/DevRowKey"
+                android:text="@string/dev_update_service" />
+
+            <TextView
+                android:id="@+id/dev_update_status"
+                style="@style/DevRowVal"
+                android:text="@string/dev_checking" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- admin center shortcut -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="24dp"
+        android:background="@drawable/home_card_bg"
+        android:elevation="1dp">
+
+        <LinearLayout
+            android:id="@+id/dev_admin_center"
+            style="@style/MenuRow">
+
+            <FrameLayout style="@style/MenuRowIcon">
+
+                <ImageView
+                    style="@style/MenuRowIconImage"
+                    android:src="@drawable/ic_people" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/MenuRowText">
+
+                <TextView
+                    style="@style/MenuRowTitle"
+                    android:text="@string/adm_roles_title" />
+
+                <TextView
+                    style="@style/MenuRowDesc"
+                    android:text="@string/ws_admin_sub" />
+            </LinearLayout>
+
+            <ImageView style="@style/MenuRowChevron" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="16dp"
+        android:textSize="11.5sp"
+        android:fontFamily="@font/inter_regular"
+        android:textColor="@color/home_muted"
+        android:alpha="0.9"
+        android:text="@string/ws_developer_note" />
+</LinearLayout>

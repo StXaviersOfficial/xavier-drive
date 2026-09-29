@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mic button, LISTENING state: solid brand-blue circle with a soft
+     halo — pulses in code while the voice is being captured. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/home_brand" />
+        </shape>
+    </item>
+</layer-list>

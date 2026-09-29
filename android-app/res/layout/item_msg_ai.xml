@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     AI MESSAGE (v1.2.0) — Claude-style: NOT a box. The response is set
+     directly on the page, full width — with selectable text (owner
+     order) and ICON-ONLY actions underneath (no pill backgrounds, no
+     text labels — they looked permanently active). Optional inline
+     image (generated pictures render in place).
+     ════════════════════════════════════════════════════════════════════ -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="left">
+
+    <!-- header: badge + time -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <FrameLayout
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:background="@drawable/home_ai_btn_bg">
+
+            <ImageView
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_sparkle"
+                android:tint="#FFFFFF"
+                android:contentDescription="@null" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/bubble_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:fontFamily="@font/inter_regular"
+            android:textColor="@color/home_muted" />
+    </LinearLayout>
+
+    <!-- the response — full width, no bubble box, SELECTABLE text -->
+    <TextView
+        android:id="@+id/bubble_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textSize="14.5sp"
+        android:fontFamily="@font/inter_regular"
+        android:lineSpacingExtra="3dp"
+        android:textColor="@color/home_ink"
+        android:textColorLink="@color/home_brand"
+        android:textIsSelectable="true" />
+
+    <!-- optional inline image (generated pictures) -->
+    <ImageView
+        android:id="@+id/bubble_img"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:adjustViewBounds="true"
+        android:maxHeight="420dp"
+        android:scaleType="fitCenter"
+        android:background="@drawable/row_card"
+        android:padding="4dp"
+        android:visibility="gone"
+        android:contentDescription="@null" />
+
+    <!-- v1.1.5: AI-delivered files (```file / ```pdffile blocks) — one
+         card each, tap to preview, download button on the right -->
+    <LinearLayout
+        android:id="@+id/ai_files"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="2dp"
+        android:visibility="gone" />
+
+    <!-- action row — icon-only, quiet until pressed -->
+    <LinearLayout
+        android:id="@+id/ai_actions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <FrameLayout
+            android:id="@+id/act_copy"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="@drawable/home_ripple_circle"
+            android:contentDescription="@string/ai_copy">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_copy"
+                android:tint="@color/home_muted"
+                android:contentDescription="@null" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/act_listen"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginLeft="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="@drawable/home_ripple_circle"
+            android:contentDescription="@string/ai_listen">
+
+            <ImageView
+                android:id="@+id/act_listen_icon"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_volume"
+                android:tint="@color/home_muted"
+                android:contentDescription="@null" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/act_regen"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginLeft="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="@drawable/home_ripple_circle"
+            android:contentDescription="@string/ai_regenerate">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_refresh"
+                android:tint="@color/home_muted"
+                android:contentDescription="@null" />
+        </FrameLayout>
+    </LinearLayout>
+</LinearLayout>

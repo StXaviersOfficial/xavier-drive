@@ -1,0 +1,13 @@
+[{
+  "relation": [
+    "delegate_permission/common.handle_all_urls",
+    "delegate_permission/common.get_login_creds"
+  ],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.stxaviers.app",
+    "sha256_cert_fingerprints": [
+      "5A:0F:E5:E7:A9:B8:B1:CF:87:72:D6:2F:31:61:80:71:87:2E:CC:5A:E1:08:22:88:03:FE:56:6A:50:E9:45:D0"
+    ]
+  }
+}]

@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     LOGIN v1.0.5/v1.0.6 — typography pass on the space-fabric background.
+
+     What's on the page (and NOTHING else):
+       logo + halo          gentle pop, then a whisper-slow float
+       XavierDrive          Shrikhand, per-letter kinetic + rainbow shimmer
+       school name          Poppins, static, exact owner text
+       glass card           spinning rainbow border; shine sweeps ONLY the
+                            welcome-text area (v1.0.6 — it used to cross the
+                            Google button and wash out the G):
+         Welcome back        Rubik Glitch, glitch-burst animated forever
+         Continue with Google  plain system font, official-colour G
+         terms note          small sans, links to the in-app legal viewer
+     Everything the owner asked to remove is gone: "official portal",
+     the AI/Drive/Classes chips, "role is assigned automatically",
+     "sign in with your school Google account", the orbit dots.
+
+     Auto dark/light: every color is a @color ref — values/ = day,
+     values-night/ = night; FabricSpaceView re-seeds its palette the
+     same way (the activity is recreated on uiMode changes).
+     ════════════════════════════════════════════════════════════════════ -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.stxaviers.app.FabricSpaceView
+        android:id="@+id/login_fabric"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <ScrollView
+        android:id="@+id/login_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none"
+        android:overScrollMode="never">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingLeft="26dp"
+            android:paddingRight="26dp"
+            android:paddingTop="52dp"
+            android:paddingBottom="36dp">
+
+            <!-- ── logo hero (no orbit dots — they read as clutter) ── -->
+            <FrameLayout
+                android:id="@+id/logo_wrap"
+                android:layout_width="208dp"
+                android:layout_height="208dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <View
+                    android:id="@+id/login_glow"
+                    android:layout_width="178dp"
+                    android:layout_height="178dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/splash_glow" />
+
+                <ImageView
+                    android:id="@+id/login_logo"
+                    android:layout_width="148dp"
+                    android:layout_height="148dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/login_logo"
+                    android:contentDescription="@string/app_name" />
+            </FrameLayout>
+
+            <!-- ── kinetic title (Shrikhand letters injected by code) ── -->
+            <LinearLayout
+                android:id="@+id/title_row1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="20dp"
+                android:clipChildren="false"
+                android:clipToPadding="false" />
+
+            <!-- ── school line (Poppins — normal font, NEVER animated;
+                         exact text per owner: "St. Xavier's Jr./Sr. School") ── -->
+            <TextView
+                android:id="@+id/login_sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:paddingLeft="8dp"
+                android:paddingRight="8dp"
+                android:textSize="14sp"
+                android:letterSpacing="0.02"
+                android:gravity="center"
+                android:singleLine="true"
+                android:textColor="@color/login_sub_ink"
+                android:text="@string/login_sub" />
+
+            <!-- ── glass card: rainbow-spin border + shine sweep ── -->
+            <com.stxaviers.app.GlowCardView
+                android:id="@+id/login_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="30dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:padding="30dp">
+
+                    <!-- Welcome back — Rubik Glitch letters injected by code,
+                         waving + glitching forever -->
+                    <LinearLayout
+                        android:id="@+id/welcome_row"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:clipChildren="false"
+                        android:clipToPadding="false" />
+
+                    <!-- google button — PLAIN (owner: "write it normally").
+                         The G icon is set from code at a proper 20dp with
+                         its official colours; no shine overlay anymore
+                         (the sweep is what made the G flash "too bright"). -->
+                    <FrameLayout
+                        android:id="@+id/gbtn_wrap"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:layout_marginTop="28dp">
+
+                        <Button
+                            android:id="@+id/gbtn"
+                            android:layout_width="match_parent"
+                            android:layout_height="56dp"
+                            android:background="@drawable/gbtn_bg"
+                            android:stateListAnimator="@null"
+                            android:drawablePadding="12dp"
+                            android:paddingLeft="18dp"
+                            android:textSize="14.5sp"
+                            android:letterSpacing="0.01"
+                            android:textAllCaps="false"
+                            android:textColor="@color/gbtn_ink"
+                            android:text="@string/login_google" />
+                    </FrameLayout>
+
+                    <TextView
+                        android:id="@+id/login_note"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:textSize="11sp"
+                        android:lineSpacingExtra="3dp"
+                        android:gravity="center"
+                        android:textColor="@color/login_muted"
+                        android:text="@string/login_note" />
+                </LinearLayout>
+            </com.stxaviers.app.GlowCardView>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

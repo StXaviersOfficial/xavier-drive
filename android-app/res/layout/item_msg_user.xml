@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- User message (v1.1.2): brand-gradient bubble, right-aligned, capped
+     width — the calm counterpoint to the AI's full-width responses. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="right">
+
+    <TextView
+        android:id="@+id/bubble_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxWidth="300dp"
+        android:background="@drawable/msg_user_bg"
+        android:paddingLeft="15dp"
+        android:paddingRight="15dp"
+        android:paddingTop="11dp"
+        android:paddingBottom="11dp"
+        android:textSize="14.5sp"
+        android:fontFamily="@font/inter_regular"
+        android:lineSpacingExtra="2dp"
+        android:textColor="@color/msg_user_ink"
+        android:textColorLink="@color/msg_user_ink" />
+
+    <TextView
+        android:id="@+id/bubble_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:layout_marginRight="4dp"
+        android:textSize="11sp"
+        android:fontFamily="@font/inter_regular"
+        android:textColor="@color/home_muted" />
+</LinearLayout>

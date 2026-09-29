@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ════════════════════════════════════════════════════════════════════
+     SHARED BOTTOM NAVIGATION (v1.1.2) — three destinations:
+     Home · XavierDrive AI (elevated center) · Profile.
+     Files and Notices moved into the Home school tools (owner order);
+     the AI experience is full-screen, so it opens WITHOUT the bar.
+     Wired once by TabNav.java. 80dp tall · 24dp icons · 12sp labels ·
+     56x32dp active pills · 52dp gradient AI button. All colors are
+     @color refs with night twins.
+     ════════════════════════════════════════════════════════════════════ -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bottom_nav"
+    android:layout_width="match_parent"
+    android:layout_height="80dp"
+    android:orientation="horizontal"
+    android:background="@color/home_nav_bg">
+
+    <!-- Home -->
+    <FrameLayout
+        android:id="@+id/nav_home"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?android:attr/selectableItemBackgroundBorderless">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:layout_gravity="center">
+
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="32dp">
+
+                <View
+                    android:id="@+id/nav_home_pill"
+                    android:layout_width="56dp"
+                    android:layout_height="32dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/home_nav_pill_bg" />
+
+                <ImageView
+                    android:id="@+id/nav_home_icon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_home"
+                    android:tint="@color/home_nav_active"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/nav_home_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter_medium"
+                android:textColor="@color/home_nav_active"
+                android:text="@string/home_nav_home" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- XavierDrive AI — elevated center button -->
+    <FrameLayout
+        android:id="@+id/nav_ai"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?android:attr/selectableItemBackgroundBorderless">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:layout_gravity="center">
+
+            <View
+                android:id="@+id/nav_ai_pill"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
+
+            <FrameLayout
+                android:id="@+id/ai_btn"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/home_ai_btn_bg"
+                android:foreground="@drawable/home_ripple_circle"
+                android:elevation="4dp">
+
+                <ImageView
+                    android:id="@+id/nav_ai_icon"
+                    android:layout_width="25dp"
+                    android:layout_height="25dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_sparkle"
+                    android:tint="#FFFFFF"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/nav_ai_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter_medium"
+                android:textColor="@color/home_nav_inactive"
+                android:text="@string/home_nav_ai" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Profile -->
+    <FrameLayout
+        android:id="@+id/nav_profile"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?android:attr/selectableItemBackgroundBorderless">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:layout_gravity="center">
+
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="32dp">
+
+                <View
+                    android:id="@+id/nav_profile_pill"
+                    android:layout_width="56dp"
+                    android:layout_height="32dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/home_nav_pill_bg"
+                    android:visibility="invisible" />
+
+                <ImageView
+                    android:id="@+id/nav_profile_icon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_person"
+                    android:tint="@color/home_nav_inactive"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/nav_profile_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter_medium"
+                android:textColor="@color/home_nav_inactive"
+                android:text="@string/home_nav_profile" />
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LIGHT palette (day). values-night/ overrides for dark. -->
+<resources>
+    <color name="accent">#2f6bff</color>
+    <color name="accent2">#7a3cf5</color>
+    <color name="accent3">#f74f7a</color>
+    <color name="accent4">#f7c44f</color>
+    <color name="cyan">#0ea5c9</color>
+
+    <color name="ink">#171d3a</color>
+    <color name="muted">#5a628a</color>
+    <color name="bg_deep">#eef2fb</color>
+    <color name="bg_mid">#dde7fb</color>
+    <color name="white">#ffffff</color>
+
+    <!-- login -->
+    <color name="login_bg">#eef2fb</color>
+    <color name="login_ink">#171d3a</color>
+    <color name="login_muted">#5a628a</color>
+    <color name="login_sub_ink">#33415e</color>
+    <color name="login_card">#ccffffff</color>
+    <color name="login_card_border">#334f8ef7</color>
+    <color name="login_chip_bg">#b3ffffff</color>
+    <color name="login_chip_stroke">#22273619</color>
+    <color name="login_chip_ink">#33415e</color>
+    <color name="gbtn_bg">#ffffff</color>
+    <color name="gbtn_ink">#1a1c2c</color>
+    <color name="gbtn_border">#29000000</color>
+    <color name="shine_color">#66ffffff</color>
+    <color name="cta_start">#2f6bff</color>
+    <color name="cta_end">#7a3cf5</color>
+    <color name="cta_ink">#ffffff</color>
+    <color name="track_bg">#1f27365e</color>
+    <color name="continue_ink">#2f6bff</color>
+    <color name="update_panel">#e6f0fc</color>
+    <color name="orb1">#7db4ff</color>
+    <color name="orb2">#c9a6f7</color>
+    <color name="orb3">#ffa6bd</color>
+    <color name="orb4">#7de9ff</color>
+    <color name="orb5">#a8f0d4</color>
+    <color name="star_col">#4f8ef7</color>
+    <color name="shoot_col">#2f6bff</color>
+    <color name="ring_a">#4f8ef7</color>
+    <color name="ring_b">#f74f7a</color>
+    <color name="status_scrim">#99eef2fb</color>
+
+    <!-- ══ home v1.0.10 — refined native front page (light) ══ -->
+    <color name="home_bg">#f6f8fd</color>
+    <color name="home_surface">#ffffff</color>
+    <color name="home_nav_bg">#ffffff</color>
+    <color name="home_ink">#161c38</color>
+    <color name="home_muted">#5b6387</color>
+    <color name="home_brand">#2f6bff</color>
+    <color name="home_hairline">#e4e9f4</color>
+    <color name="home_ripple">#1a2f6bff</color>
+    <color name="home_search_icon">#5b6387</color>
+
+    <!-- the ONE tonal tile system (quick icons + explore icons) -->
+    <color name="home_tile_bg">#ecf0fa</color>
+    <color name="home_tile_ink">#2f6bff</color>
+
+    <!-- hero + AI gradient cards (brand colour moments) -->
+    <color name="home_hero_start">#2f6bff</color>
+    <color name="home_hero_end">#7a3cf5</color>
+    <color name="home_hero_ink">#ffffff</color>
+    <color name="home_hero_sub">#e3e9ff</color>
+    <color name="home_hero_chip">#33ffffff</color>
+    <color name="home_ai_start">#3d6dff</color>
+    <color name="home_ai_end">#8a46f8</color>
+    <color name="home_ai_ink">#ffffff</color>
+    <color name="home_ai_sub">#e4eaff</color>
+
+    <!-- misc -->
+    <color name="home_avatar_start">#2f6bff</color>
+    <color name="home_avatar_end">#8a46f8</color>
+    <color name="home_badge">#ff5a76</color>
+    <color name="home_badge_ink">#ffffff</color>
+    <color name="home_role_chip">#e9f0ff</color>
+    <color name="home_role_ink">#2f6bff</color>
+    <color name="home_nav_active">#2f6bff</color>
+    <color name="home_nav_inactive">#9aa2c0</color>
+    <color name="home_nav_pill">#1a2f6bff</color>
+    <!-- ══ splash v1.0.9 — now theme-aware (light values) ══ -->
+    <color name="splash_label">#4a5478</color>
+    <color name="splash_title">#171d3a</color>
+    <color name="splash_meta">#2f6bff</color>
+    <color name="splash_notes">#4a5478</color>
+    <color name="splash_error">#d23a5e</color>
+    <color name="splash_footer">#6a7499</color>
+    <color name="update_panel_border">#2a224438</color>
+
+
+    <!-- ══ v1.1.0 feature screens (light) ══ -->
+    <!-- semantic mime-kind tints (colour = category) -->
+    <color name="kind_pdf">#d23a5e</color>
+    <color name="kind_doc">#2f6bff</color>
+    <color name="kind_image">#0e9f6e</color>
+    <color name="kind_video">#7a3cf5</color>
+    <color name="kind_audio">#e08a2e</color>
+    <color name="kind_file">#5b6387</color>
+    <!-- states -->
+    <color name="success">#0e9f6e</color>
+    <color name="danger">#d23a5e</color>
+    <color name="chip_off_bg">#f0f3fa</color>
+    <color name="fab_tonal_bg">#2f6bff</color>
+    <color name="tt_edit_bg">#f3f6ff</color>
+    <!-- AI bubbles -->
+    <color name="msg_user_ink">#ffffff</color>
+    <color name="msg_user_time">#b3ffffff</color>
+    <color name="msg_ai_ink">#161c38</color>
+
+    <!-- ══ v2.0.0 — chat history drawer ══ -->
+    <color name="drawer_scrim">#59000000</color>
+</resources>

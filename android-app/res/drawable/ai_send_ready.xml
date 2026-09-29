@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Send button, READY state: the blue gradient circle. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient android:angle="315" android:startColor="@color/home_ai_start"
+        android:endColor="@color/home_ai_end" android:type="linear" />
+</shape>

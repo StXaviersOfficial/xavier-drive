@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.stxaviers.app"
+    android:versionCode="19"
+    android:versionName="1.1.6">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- v1.1.2: voice input in the AI composer (runtime-requested) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- mic-less devices still install; voice input simply isn't offered -->
+    <uses-feature android:name="android.hardware.microphone"
+        android:required="false" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:allowBackup="false"
+        android:supportsRtl="true"
+        android:extractNativeLibs="false"
+        android:usesCleartextTraffic="false"
+        android:theme="@style/Theme.XavierDrive">
+
+        <!-- Google Play Services version marker (used by the Credential
+             Manager fallback on Android < 14). The integer comes from the
+             play-services-basement AAR merged at build time. -->
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+
+        <activity android:name="com.google.android.gms.auth.api.signin.internal.SignInHubActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity android:name="com.google.android.gms.common.api.GoogleApiActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <service android:name="com.google.android.gms.auth.api.signin.RevocationBoundService"
+            android:exported="true"
+            android:permission="com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION" />
+
+        <service android:name="androidx.credentials.playservices.CredentialProviderMetadataHolder"
+            android:enabled="true"
+            android:exported="false">
+            <meta-data
+                android:name="androidx.credentials.CREDENTIAL_PROVIDER_KEY"
+                android:value="androidx.credentials.playservices.CredentialProviderPlayServicesImpl" />
+        </service>
+
+        <activity android:name="androidx.credentials.playservices.HiddenActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:enabled="true"
+            android:exported="false"
+            android:fitsSystemWindows="true"
+            android:theme="@style/Theme.Hidden" />
+
+        <activity android:name="com.stxaviers.app.SplashActivity" android:exported="true" android:noHistory="true"
+            android:theme="@style/Theme.XavierDrive.Splash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".LoginActivity" android:exported="false"
+            android:theme="@style/Theme.XavierDrive.Login" />
+
+        <activity android:name=".AuthActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
+            android:theme="@style/Theme.XavierDrive.Login" />
+
+        <activity android:name=".LegalActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
+            android:theme="@style/Theme.XavierDrive.Login" />
+
+        <!-- v1.0.9: the WebView portal is DELETED — HomeActivity is the
+             all-native front page reached after sign-in. NOTE: uiMode is
+             deliberately NOT in configChanges — a live light/dark switch
+             must recreate this screen so every @color re-resolves. -->
+        <activity android:name=".HomeActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <!-- ══ v1.1.0 — the functional feature screens (all native,
+             light+dark, same Home theme; uiMode deliberately omitted so a
+             live theme switch recreates + re-resolves every @color) ══ -->
+        <activity android:name=".FilesActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <activity android:name=".AiActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <activity android:name=".NoticesActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <activity android:name=".ProfileActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <activity android:name=".TimetableActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <activity android:name=".LogbookActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <activity android:name=".LiveActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <activity android:name=".AttendanceActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <activity android:name=".SchoolActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <activity android:name=".SettingsActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <!-- v1.2.0: the admin screens — roles, live oversight, files -->
+        <activity android:name=".AdminRolesActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+        <activity android:name=".AdminLiveActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+        <activity android:name=".AdminFilesActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+        <!-- v1.2.0: full-screen AI settings (voice / font / memory / chats) -->
+        <activity android:name=".AiSettingsActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.XavierDrive.Home" />
+
+        <!-- v1.1.0: share downloaded Drive files with the system viewer -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.stxaviers.app.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>
