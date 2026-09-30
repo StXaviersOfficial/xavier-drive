@@ -2244,10 +2244,7 @@ async function callAI(message,opts={}){
     class:sClass||null,
     history:opts.history||(chatHistory.filter(m=>m.role!=='system').slice(-30)),
     forceModel:opts.forceModel||null,
-    images:opts.images||null,
-    // v1.1.5: the chat's workspace files (uploaded by the user or made by
-    // the AI) — the worker tells the AI what it has to work with
-    workspace:(curSession&&curSession._workspace&&curSession._workspace.length)?curSession._workspace:null
+    images:opts.images||null
   };
   const r=await fetch(WORKER+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(body)});
   const d=await r.json();if(d.error)throw new Error(d.error);
@@ -4427,18 +4424,6 @@ async function getUserChatFolder(){
 async function loadSessions(){
   try{
     const fid=await getUserChatFolder();
-    // v1.1.5: HEAL THE STORE BEFORE LISTING — the worker's dedup sweep
-    // merges any doubled chat folders (app + website races created two
-    // folders for one chat), carries artifacts into the keeper and
-    // renames legacy title-named folders onto chats/<gmail>/<chatUid>/.
-    // KV-guarded per user (runs at most once per 3h); capped at 9s so a
-    // slow sweep can never block the chat list.
-    try{
-      await Promise.race([
-        fetch(WORKER+'/api/chats/dedup',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:'{}'}).catch(()=>{}),
-        new Promise(res=>setTimeout(res,9000)),
-      ]);
-    }catch(e){/* never block loading on the sweeper */}
     // Search for FOLDERS (each chat session is a folder containing chat.json)
     const folderQ=`'${fid}' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'`;
     const folderR=await wDrv('/drive/files','GET',null,'q='+encodeURIComponent(folderQ)+'&fields=files(id,name,modifiedTime)&orderBy=modifiedTime+desc&pageSize=100');
@@ -4505,27 +4490,19 @@ async function saveSession(sess){
     // FIXED: missing await — was passing Promise as parents:[fid] to worker
     const fid=await getUserChatFolder();
     if(!fid||fid.length<10)return;
-    // v1.1.5 CHAT STORE LAW: the folder NAME is the chat UID — never the
-    // title. Drive allows same-name folders, and title-named folders were
-    // the source of "one chat shows twice" (a save race created a second
-    // folder for the same conversation). One id = one folder, forever,
-    // on app AND website. Legacy title-named folders are adopted at load
-    // (loadSessions sets _folderId) and renamed by the dedup sweep.
+    // Use folder structure: chatname/chat.json
+    // Create or find a folder named after the session
+    const sessName=(sess.name||('chat_'+sess.id)).replace(/[^a-zA-Z0-9_\- ]/g,'').trim().substring(0,40)||'untitled';
+    // BUGFIX 2026-09-25: if another in-memory copy of this session already has
+    // a Drive folder, reuse it — never create a second folder for the same id.
     if(!sess._folderId){
       const twin=sessions.find(x=>x!==sess&&x.id===sess.id&&x._folderId);
       if(twin)sess._folderId=twin._folderId;
     }
+    // Check if we already have a folder ID for this session
     if(!sess._folderId){
-      // adopt the UID-named folder if it already exists
-      try{
-        const fq="'"+fid+"' in parents and name='"+sess.id+"' and mimeType='application/vnd.google-apps.folder' and trashed=false";
-        const fr=await wDrv('/drive/files','GET',null,'q='+encodeURIComponent(fq)+'&fields=files(id)&pageSize=1');
-        if(fr.files&&fr.files.length)sess._folderId=fr.files[0].id;
-      }catch(e){/* fall through to create */}
-    }
-    if(!sess._folderId){
-      // Create folder for this chat — named by the chat UID
-      const folderResp=await wDrv('/drive/mkdir','POST',{name:sess.id,parents:[fid]});
+      // Create folder for this chat
+      const folderResp=await wDrv('/drive/mkdir','POST',{name:sessName,parents:[fid]});
       sess._folderId=folderResp.id;
       await saveChatJson(sess);
     }else{
@@ -4537,9 +4514,17 @@ async function saveSession(sess){
 function saveChatJson(sess){
   if(!sess._folderId)return;
   const blob=new Blob([JSON.stringify(sess)],{type:'application/json'});
-  // Delete old chat.json if exists
+  // v1.1.7 (step 8): PATCH in place when the file id is known. The old
+  // delete-then-upload broke the moment the worker made DELETE staff-only
+  // (owner order: students must never be able to delete anything, including
+  // their own chat.json) and caused duplicate-file churn on save races.
   if(sess._driveId){
-    wDrv('/drive/delete','DELETE',null,'id='+encodeURIComponent(sess._driveId)).catch(()=>{});
+    fetch(WORKER+'/drive/files/'+encodeURIComponent(sess._driveId),{
+      method:'PATCH',credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:blob
+    }).catch(e=>console.warn('chat.json PATCH failed:',e));
+    return;
   }
   const meta={name:'chat.json',parents:[sess._folderId],mimeType:'application/json'};
   const form=new FormData();
@@ -4551,17 +4536,7 @@ function saveChatJson(sess){
   xhr.send(form);
 }
 
-// Save an artifact (image/PDF/file) to the chat's artifacts folder —
-// the AI's WORKSPACE (owner directive 2026-09-29): every file the user
-// uploads or the AI creates in a chat is stored inside that chat's own
-// folder, and the AI is told what's there on every turn.
-function artifactTypeFor(mime,name){
-  const m=String(mime||'').toLowerCase(),n=String(name||'').toLowerCase();
-  if(m.startsWith('image/')||/\.(png|jpe?g|gif|webp)$/.test(n))return'image';
-  if(m.includes('pdf')||n.endsWith('.pdf'))return'pdf';
-  if(m.includes('html')||n.endsWith('.html')||n.endsWith('.htm'))return'html';
-  return'file';
-}
+// Save an artifact (image/PDF) to the chat's artifacts folder
 async function saveArtifact(sess,data,type,name){
   if(!sess||!sess._folderId)return;
   try{
@@ -4621,6 +4596,9 @@ function switchSession(id){
 
 async function deleteSession(id,e){
   e.stopPropagation();
+  // v1.1.7 (owner order): students never delete chats. The worker enforces
+  // this too (403) — this check just avoids a confusing failed request.
+  if(role!=='teacher'){toast('Deleting chats is limited to teachers and admins','err');return;}
   const sess=sessions.find(s=>s.id===id);
   if(sess?._driveId){try{await wDrv('/drive/delete','DELETE',null,'id='+encodeURIComponent(sess._driveId));}catch(e){console.warn(e)}}
   if(sess?._folderId){try{await wDrv('/drive/delete','DELETE',null,'id='+encodeURIComponent(sess._folderId));}catch(e){console.warn(e)}}
@@ -4680,11 +4658,12 @@ function showSessMenu(e,id){
   dismissSessMenu();_sessMenuId=id;
   const backdrop=document.createElement('div');backdrop.className='sess-ctx-backdrop';backdrop.id='sess-ctx-backdrop';backdrop.onclick=dismissSessMenu;document.body.appendChild(backdrop);
   const menu=document.createElement('div');menu.className='sess-ctx-menu';menu.id='sess-ctx-menu';
+  // v1.1.7 (owner order): Delete is staff-only (teachers/admins/devs).
+  const delItem=role==='teacher'?`\n    <div class="sess-ctx-item danger" onclick="sessCtxDelete('${id}')">🗑️ Delete chat</div>`:'';
   menu.innerHTML=`
     <div class="sess-ctx-item" onclick="sessCtxRename('${id}')">✏️ Rename chat</div>
     <div class="sess-ctx-item" onclick="sessCtxDownload('${id}')">⬇️ Download chat</div>
-    <div class="sess-ctx-item" onclick="sessCtxSummarize('${id}')">✨ Summarize chat</div>
-    <div class="sess-ctx-item danger" onclick="sessCtxDelete('${id}')">🗑️ Delete chat</div>
+    <div class="sess-ctx-item" onclick="sessCtxSummarize('${id}')">✨ Summarize chat</div>${delItem}
   `;
   document.body.appendChild(menu);
   const mw=180,mh=170;
@@ -5677,7 +5656,7 @@ async function sendMsg(){
   inp.value='';
   inp.style.height='52px'; // Reset to min height after send
   const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
-  let userText=text,fileContents='',imageAttachments=[],artifactUploads=[];
+  let userText=text,fileContents='',imageAttachments=[];
 
   if(attachedFiles.length){
     const names=attachedFiles.map(f=>f.name).join(', ');
@@ -5691,9 +5670,6 @@ async function sendMsg(){
           const txt=await readFileText(f);
           fileContents+=`\n\n--- FILE: ${f.name} ---\n${txt.substring(0,8000)}\n--- END FILE ---`;
         }
-        // v1.1.5: keep the upload in the chat's artifacts folder (the AI's
-        // workspace) so the AI can work with it on any device, any turn
-        artifactUploads.push({name:f.name,blob:f,type:artifactTypeFor(f.type,f.name)});
       }catch{fileContents+=`\n\n[Could not read: ${f.name}]`;}
     }
     attachedFiles=[];renderAttachBar();
@@ -5731,14 +5707,6 @@ async function sendMsg(){
 
   chatHistory.push({role:'user',text:userText,time});
   if(curSession){curSession.history=chatHistory;saveSession(curSession);}
-  // v1.1.5: uploads land in the chat's artifacts folder (the AI workspace)
-  if(curSession&&artifactUploads.length){
-    curSession._workspace=curSession._workspace||[];
-    for(const up of artifactUploads){
-      if(!curSession._workspace.includes(up.name))curSession._workspace.push(up.name);
-      saveArtifact(curSession,up.blob,up.type,up.name); // fire-and-forget
-    }
-  }
   if(chatHistory.filter(m=>m.role==='user').length===1)aiRenameSession();
   renderMsgs();
 
@@ -5803,7 +5771,7 @@ async function sendMsg(){
     let aiResult=null;
     try{
       aiResult=await callAIStream(
-        {message:sendText,history:histMsgs,images:sendImages,role:role||'student',email:currentUser?.email||'',class:sClass||null,workspace:(curSession&&curSession._workspace&&curSession._workspace.length)?curSession._workspace:null},
+        {message:sendText,history:histMsgs,images:sendImages,role:role||'student',email:currentUser?.email||'',class:sClass||null},
         (ev)=>{steps.push(ev);addAgentStepRow(stepsEl,ev);},
         (ctrl)=>{currentAbort=ctrl;}
       );
@@ -5834,18 +5802,6 @@ async function sendMsg(){
     }
 
     addAIMsg(reply,true,true,false,{steps:steps.length?steps:undefined,searched:aiResult.searched,provider:aiResult.provider});
-    // v1.1.5: persist every AI-created file into the chat's workspace
-    // (artifacts folder) and tell the AI about it on later turns
-    if(curSession){
-      const made=extractMsgFiles(reply);
-      if(made.length){
-        curSession._workspace=curSession._workspace||[];
-        for(const f of made){
-          if(!curSession._workspace.includes(f.name))curSession._workspace.push(f.name);
-          saveArtifact(curSession,new Blob([f.content],{type:f.mime}),artifactTypeFor(f.mime,f.name),f.name);
-        }
-      }
-    }
     renderSessionsList();
   }catch(e){
     removeAgentStepsEl();
