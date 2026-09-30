@@ -578,6 +578,7 @@ async function planResearch(message, history, agent) {
       messages: [...tail, { role: 'user', content: String(message).slice(0, 2000) }],
       systemExtra: RESEARCH_PLANNER_PROMPT,
       maxTokens: 150, user: 'research-planner',
+      purpose: 'plan',          // step 7/8: planner calls route to the cheapest tier
     }),
     new Promise((_, rej) => setTimeout(() => rej(new Error('planner timeout')), 14000)),
   ]);
@@ -696,7 +697,16 @@ async function chatOrchestrate(body, onStep) {
   const messages = [...history, lastMsg];
 
   if (onStep) onStep({ icon: '✍️', label: 'Composing answer', detail: pack && pack.sources.length ? pack.sources.length + ' sources studied' : '' });
-  const ai = await workerAiCall({ messages, systemExtra, maxTokens: 8192, user: body.email || 'site-user' });
+  // STEP 7/8 (worker route forwarding): the worker classifies difficulty and
+  // caps the tier per role (students 'standard', staff 'pro'). Forwarding
+  // tier/maxTier means teachers finally reach the 'pro' models through this
+  // engine; without them the worker re-runs its own heuristic capped at
+  // 'standard' for everyone.
+  const ai = await workerAiCall({
+    messages, systemExtra, maxTokens: 8192, user: body.email || 'site-user',
+    tier: body.route && body.route.tier,
+    maxTier: body.route && body.route.maxTier,
+  });
 
   const srcMeta = (pack ? pack.sources : []).slice(0, 4).map(s => ({ title: s.title || s.url, url: s.url }));
   agentLog(agent, `answer via ${ai.provider} (${Date.now() - t0}ms${pack ? ', ' + pack.sources.length + ' sources read' : ', no research'})`);
@@ -733,7 +743,7 @@ const server = http.createServer(async (req, res) => {
       try { const s = fs.statfsSync ? fs.statfsSync(ROOT) : null; if (s) diskFree = s.bsize * s.bavail; } catch (e) {}
       return send(200, JSON.stringify({
         ok: true, uptime: Math.round(process.uptime()), rssMB: Math.round(process.memoryUsage().rss / 1048576),
-        node: process.version, server: 'xavierdrive-backend', version: '2.4.0',
+        node: process.version, server: 'xavierdrive-backend', version: '2.4.1',
         storage: { root: '/storage/XavierDrive', usedBytes: dirSize(ROOT), files: buildTree(ROOT, '/', 0) ? countFiles(buildTree(ROOT, '/', 0)) : 0 },
       }));
     }
@@ -901,6 +911,7 @@ const server = http.createServer(async (req, res) => {
           messages: [{ role: 'user', content: message }],
           systemExtra: TITLE_PROMPT + (reply ? `\n\nASSISTANT REPLY (context):\n${reply.slice(0, 1200)}` : ''),
           maxTokens: 60, user: 'chat-title',
+          purpose: 'title',        // step 7/8: title calls route to the cheapest tier
         });
         let title = String(ai.text || '').replace(/[\r\n]+/, ' ').replace(/^["'`\s]+|["'`\s.]+$/g, '').slice(0, 48).trim();
         if (!title || title.length < 2) {
