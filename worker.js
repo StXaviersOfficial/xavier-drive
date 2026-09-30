@@ -689,6 +689,169 @@ async function mirrorDelete(env, driveId) {
   }
 }
 
+// ── SECURITY HELPERS (handoff step 4 audit) ─────────────────────────
+// Constant-time string compare (no early exit on the first differing byte).
+function safeEqual(a, b) {
+  a = String(a == null ? '' : a); b = String(b == null ? '' : b);
+  let diff = a.length ^ b.length;
+  const n = Math.max(a.length, b.length);
+  for (let i = 0; i < n; i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return diff === 0;
+}
+
+// X-Backend-Key check. FAIL-CLOSED: when BACKEND_KEY is unset/short the old
+// `header !== (env.BACKEND_KEY || '')` test let anyone in by sending an EMPTY
+// X-Backend-Key header (''!==''), i.e. free use of every provider key.
+function backendKeyOk(request, env) {
+  const k = env.BACKEND_KEY;
+  if (!k || String(k).length < 16) return false;
+  return safeEqual(request.headers.get('X-Backend-Key') || '', k);
+}
+
+// Google Drive file ids are [A-Za-z0-9_-]. Ids were pasted raw into API URLs,
+// so `id=abc/permissions` or `id=abc?x=` could reach other Drive endpoints.
+const DRIVE_ID_RE = /^[A-Za-z0-9_-]{10,128}$/;
+function validDriveId(id) { return typeof id === 'string' && DRIVE_ID_RE.test(id); }
+
+// Per-isolate memo of ancestry decisions (10 min) so a student's chat-save
+// burst does not hammer the Drive metadata API.
+const _driveAclCache = new Map();
+function _aclGet(k) { const v = _driveAclCache.get(k); if (v && v.exp > Date.now()) return v.ok; _driveAclCache.delete(k); return null; }
+function _aclPut(k, ok) { if (_driveAclCache.size > 2000) _driveAclCache.clear(); _driveAclCache.set(k, { ok, exp: Date.now() + 600000 }); }
+
+// Walk a file's parents upward (max 8 hops). Returns the ancestor chain
+// [{id,name}] starting with the file itself, or null on any Drive error.
+async function driveChain(id, hdrs) {
+  const chain = [];
+  let cur = id;
+  for (let hop = 0; hop < 8 && cur; hop++) {
+    let r;
+    try { r = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(cur)}?fields=id,name,parents`, { headers: hdrs }); }
+    catch (e) { return null; }
+    if (!r.ok) return null;
+    const f = await r.json();
+    chain.push({ id: f.id, name: String(f.name || '') });
+    cur = (f.parents || [])[0];
+  }
+  return chain;
+}
+
+// Student write-scope: the target must live INSIDE  …/CHATS/<own email>/…
+// (allowSelf = the own-email folder itself also counts, used for "parents").
+async function studentOwnsChatItem(id, email, hdrs, allowSelf) {
+  const key = 'own|' + email + '|' + id + '|' + (allowSelf ? 1 : 0);
+  const hit = _aclGet(key); if (hit !== null) return hit;
+  const chain = await driveChain(id, hdrs);
+  let ok = false;
+  if (chain) {
+    for (let i = allowSelf ? 0 : 1; i < chain.length; i++) {
+      const c = chain[i];
+      if (c.name.toLowerCase() === email && chain[i + 1] && chain[i + 1].name === 'CHATS') { ok = true; break; }
+    }
+  }
+  if (ok) _aclPut(key, true);
+  return ok;
+}
+
+// Student READ deny-list: other people's chats and the staff role folders.
+// (Everything else stays readable exactly as before — the shared school
+// files the app browses.)  Fails CLOSED when Drive metadata is unavailable.
+async function studentMayRead(id, email, hdrs) {
+  const key = 'rd|' + email + '|' + id;
+  const hit = _aclGet(key); if (hit !== null) return hit;
+  const chain = await driveChain(id, hdrs);
+  if (!chain) return false;
+  let ok = true;
+  for (let i = 0; i < chain.length; i++) {
+    const n = chain[i].name;
+    if (n === 'TEACHERS' || n === 'ADMINS' || n === 'DEVELOPERS') { ok = false; break; }
+    if (n === 'CHATS' && i > 0) {                       // chain[i-1] = <email> folder
+      if (chain[i - 1].name.toLowerCase() !== email) { ok = false; }
+      break;
+    }
+  }
+  if (ok) _aclPut(key, true);
+  return ok;
+}
+
+// STEP 8: may a STUDENT run a /drive/files LISTING with this query?
+// Policy (owner order — students browse shared school content + their own
+// chats, nothing else). Every parents-scoped query's folder chain must be:
+//   (a) the Xavier-Drive root itself or a FILES / ANNOUNCEMENTS / TIMETABLE
+//       / LOGBOOK subtree (the shared school sections), or
+//   (b) below their own .../USERS/CHATS/<own email>/ folder (their chats), or
+//   (c) the CHATS root WHEN the query also pins name='<own email>' (the
+//       exact own-folder lookup every client performs), or
+//   (d) the USERS root WHEN the query also pins name='CHATS' (the exact
+//       structural lookup — no email harvest possible).
+// Unscoped queries are allowed ONLY for the Xavier-Drive root folder lookup
+// (checked separately in the handler).
+// NOTE: driveChain() appends the Drive account root ("My Drive") at the
+// end, so the Xavier-Drive root is FOUND BY NAME, never assumed to be the
+// last chain entry.
+async function studentMayListQuery(q, email, hdrs) {
+  const ids = parentsIdsInQuery(q);
+  if (ids.length === 0) {
+    // the ONE no-scope query every client needs: the Xavier-Drive root
+    // folder lookup (Drive.ensureRoot / website ensureRoot).
+    const rootLookup = /name\s*=\s*'Xavier-Drive'/.test(q)
+      && /application\/vnd\.google-apps\.folder/.test(q);
+    return { ok: !!rootLookup, ids };
+  }
+  const nameMatches = [...String(q || '').matchAll(/name\s*=\s*'([^']*)'/g)].map(m => m[1]);
+  for (const pid of ids) {
+    const key = 'ls|' + email + '|' + pid;
+    const hit = _aclGet(key); if (hit === true) { continue; }
+    const chain = await driveChain(pid, hdrs);
+    let ok = false, cacheable = false;
+    if (chain) {
+      // index of the topmost "Xavier-Drive" folder in the ancestor chain;
+      // entries BELOW it (smaller indices) are inside the school tree.
+      let idx = -1;
+      for (let i = chain.length - 1; i >= 0; i--) {
+        if (chain[i].name === 'Xavier-Drive') { idx = i; break; }
+      }
+      if (idx === 0) {
+        ok = true; cacheable = true;                           // (a) the root itself: section names only
+      } else if (idx > 0) {
+        const section = chain[idx - 1].name;                 // first folder under the root
+        if (['FILES', 'ANNOUNCEMENTS', 'TIMETABLE', 'LOGBOOK'].includes(section)) {
+          ok = true; cacheable = true;                        // (a) shared school section
+        } else if (section === 'USERS') {
+          if (idx >= 3
+              && chain[idx - 2].name === 'CHATS'
+              && chain[idx - 3].name.toLowerCase() === email) {
+            ok = true; cacheable = true;                      // (b) below their own email folder
+          } else if (idx === 2 && chain[0].name === 'CHATS'
+              && nameMatches.some(n => n.toLowerCase() === email)) {
+            ok = true;                                        // (c) own-folder lookup inside CHATS (query-dependent — never cached)
+          } else if (idx === 1 && nameMatches.some(n => n === 'CHATS')) {
+            ok = true;                                        // (d) the CHATS lookup inside USERS (query-dependent — never cached)
+          }
+        }
+      }
+    }
+    // ONLY query-independent verdicts are cached: (c)/(d) depend on the
+    // name= clause, so caching them would later let an unscoped listing of
+    // the same folder pass. False verdicts are never cached (fail-closed
+    // each time until Drive metadata says otherwise).
+    if (ok && cacheable) _aclPut(key, true);
+    if (!ok) return { ok: false, ids };
+  }
+  return { ok: true, ids };
+}
+
+// STEP 8: extract every '<id>' in parents clause from a Drive query string.
+function parentsIdsInQuery(q) {
+  const out = [];
+  const re = /'([A-Za-z0-9_-]{10,128})'\s+in\s+parents/g;
+  let m;
+  while ((m = re.exec(String(q || ''))) !== null) {
+    if (!out.includes(m[1])) out.push(m[1]);
+  }
+  return out;
+}
+
 async function handleDrive(request, env, origin, path, ctx) {
   const subPath = path.replace(/^\/drive/, '');
 
@@ -714,6 +877,15 @@ async function handleDrive(request, env, origin, path, ctx) {
   const uploadBase = 'https://www.googleapis.com/upload/drive/v3';
   const headers = { Authorization: `Bearer ${ownerToken}` };
 
+  // SECURITY: every drive call runs with the OWNER's Drive token, so the
+  // caller's role MUST be checked here — a session alone is not enough.
+  const driveEmail = String((driveSess.user && driveSess.user.email) || '').toLowerCase();
+  const driveRole = await verifyRole(env, driveEmail);
+  const driveStaff = !!(driveRole && (driveRole.isAdmin || driveRole.isDeveloper || driveRole.role === 'teacher'));
+  const forbid = (msg) => json({ error: msg || 'Forbidden' }, 403, origin);
+  // Existing-object writes: staff any, students only inside their own chats.
+  const mayWrite = async (id, allowSelf) => validDriveId(id) && (driveStaff || await studentOwnsChatItem(id, driveEmail, headers, !!allowSelf));
+
   // GET /drive/files — list/search files.
   // FAST LAYER: responses are KV-cached (10 min TTL); every write bumps
   // the epoch so the cache dies the instant anything changes. This is
@@ -721,11 +893,30 @@ async function handleDrive(request, env, origin, path, ctx) {
   // load instantly instead of waiting on Google.
   if (subPath === '/files' && request.method === 'GET') {
     const url = new URL(request.url);
-    const q = url.searchParams.get('q') || '';
-    const fields = url.searchParams.get('fields') || 'files(id,name,mimeType,size,modifiedTime,description)';
+    let q = url.searchParams.get('q') || '';
+    let fields = url.searchParams.get('fields') || 'files(id,name,mimeType,size,modifiedTime,description)';
+    // students never get owner/permission/sharing metadata (leaks the school
+    // account + share links); '*' would include all of it
+    if (!driveStaff && /[*]|permission|owner|emailAddress|lastModifyingUser|sharingUser|webContentLink|webViewLink/i.test(fields)) {
+      fields = 'files(id,name,mimeType,size,modifiedTime,description)';
+    }
     const orderBy = url.searchParams.get('orderBy') || 'modifiedTime desc';
-    const pageSize = url.searchParams.get('pageSize') || '100';
-    const cacheKey = 'q:' + await sha256Hex(q + '|' + fields + '|' + orderBy + '|' + pageSize);
+    let pageSize = url.searchParams.get('pageSize') || '100';
+    // STEP 8 SECURITY FIX: students used to pass ANY Drive query and could
+    // enumerate the whole school Drive (other people's chats, the STUDENTS /
+    // TEACHERS / ADMINS marker folders = full email harvest). Now every
+    // query they run is scope-checked (see studentMayListQuery).
+    if (!driveStaff) {
+      const scope = await studentMayListQuery(q, driveEmail, headers);
+      if (!scope.ok) {
+        return json({ error: 'Not allowed to list this folder' }, 403, origin);
+      }
+      // never show trashed content, never huge pages
+      if (!/trashed\s*=/.test(q)) q = q ? (q + ' and trashed=false') : 'trashed=false';
+      const ps = parseInt(pageSize, 10) || 100;
+      pageSize = String(Math.min(ps, 100));
+    }
+    const cacheKey = 'q:' + await sha256Hex(q + '|' + fields + '|' + orderBy + '|' + pageSize + (driveStaff ? '|st' : '|su'));
     const cached = await fcGet(env, cacheKey);
     if (cached) return json(cached, 200, origin);
     const gUrl = new URL(driveBase + '/files');
@@ -743,6 +934,7 @@ async function handleDrive(request, env, origin, path, ctx) {
   const patchMatch = subPath.match(/^\/files\/([^/]+)$/);
   if (patchMatch && request.method === 'PATCH') {
     const fileId = patchMatch[1];
+    if (!(await mayWrite(fileId, false))) return forbid('Not allowed to modify this file');
     const body = await request.text();
     const r = await fetch(`${uploadBase}/files/${fileId}?uploadType=media&fields=id,name`, {
       method: 'PATCH',
@@ -760,7 +952,11 @@ async function handleDrive(request, env, origin, path, ctx) {
 
   // POST /drive/files — create file with metadata
   if (subPath === '/files' && request.method === 'POST') {
-    const body = await request.json();
+    if (!driveStaff) return forbid('Staff only');
+    const raw = await request.json();
+    const body = {};
+    for (const k of ['name', 'mimeType', 'parents', 'description']) if (raw[k] !== undefined) body[k] = raw[k];
+    if (Array.isArray(body.parents) && !body.parents.every(validDriveId)) return json({ error: 'bad parent id' }, 400, origin);
     const r = await fetch(driveBase + '/files?fields=id,name,webViewLink', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
@@ -774,7 +970,44 @@ async function handleDrive(request, env, origin, path, ctx) {
   if (subPath === '/mkdir' && request.method === 'POST') {
     const body = await request.json();
     const meta = { name: body.name, mimeType: 'application/vnd.google-apps.folder' };
-    if (body.parents && body.parents.length) meta.parents = body.parents;
+    if (body.parents && body.parents.length) {
+      if (!Array.isArray(body.parents) || !body.parents.every(validDriveId)) return json({ error: 'bad parent id' }, 400, origin);
+      meta.parents = body.parents;
+    }
+    meta.name = String(meta.name || '').slice(0, 200);
+    if (!meta.name) return json({ error: 'name required' }, 400, origin);
+    // STEP 8 SECURITY FIX: students used to be able to create folders
+    // ANYWHERE in the owner's Drive (root, TEACHERS, other people's chats).
+    // Now a student may only create:
+    //   • inside their own chats subtree (chat folders, artifacts), or
+    //   • the structural chain every client walks on a fresh Drive:
+    //     Xavier-Drive/USERS, USERS/CHATS, CHATS/<own email>.
+    // (driveChain appends the Drive account root at the end — the checks
+    //  below locate the Xavier-Drive root BY NAME, by position.)
+    if (!driveStaff) {
+      const parent = Array.isArray(meta.parents) ? meta.parents[0] : null;
+      const nm = String(meta.name).toLowerCase();
+      let ok = false;
+      if (parent && await studentOwnsChatItem(parent, driveEmail, headers, true)) {
+        ok = true;                                          // own chats subtree
+      } else if (parent && validDriveId(parent)) {
+        const chain = await driveChain(parent, headers);
+        if (chain) {
+          let idx = -1;
+          for (let i = chain.length - 1; i >= 0; i--) {
+            if (chain[i].name === 'Xavier-Drive') { idx = i; break; }
+          }
+          if (idx === 0 && nm === 'users') {
+            ok = true;                                      // Xavier-Drive/USERS (parent IS the root)
+          } else if (idx === 1 && chain[0].name === 'USERS' && nm === 'chats') {
+            ok = true;                                      // USERS/CHATS
+          } else if (idx === 2 && chain[0].name === 'CHATS' && chain[1].name === 'USERS' && nm === driveEmail) {
+            ok = true;                                      // CHATS/<own email>
+          }
+        }
+      }
+      if (!ok) return forbid('Students can only create folders inside their own chats');
+    }
     const r = await fetch(driveBase + '/files?fields=id,name,webViewLink', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
@@ -792,6 +1025,7 @@ async function handleDrive(request, env, origin, path, ctx) {
   if (subPath === '/rename' && request.method === 'POST') {
     const body = await request.json();
     if (!body.id || !body.name) return json({ error: 'id and name required' }, 400, origin);
+    if (!(await mayWrite(body.id, false))) return forbid('Not allowed to rename this file');
     const safeName = String(body.name).slice(0, 120);
     const r = await fetch(`${driveBase}/files/${encodeURIComponent(body.id)}?fields=id,name`, {
       method: 'PATCH',
@@ -809,6 +1043,9 @@ async function handleDrive(request, env, origin, path, ctx) {
   if (subPath === '/move' && request.method === 'POST') {
     const body = await request.json();
     if (!body.id || !body.addParents) return json({ error: 'id and addParents required' }, 400, origin);
+    if (!validDriveId(body.addParents) || (body.removeParents && !validDriveId(body.removeParents))) return json({ error: 'bad parent id' }, 400, origin);
+    if (!(await mayWrite(body.id, false))) return forbid('Not allowed to move this file');
+    if (!driveStaff && !(await studentOwnsChatItem(body.addParents, driveEmail, headers, true))) return forbid('Cannot move outside your chats');
     const qp = new URLSearchParams({ fields: 'id,name', addParents: body.addParents });
     if (body.removeParents) qp.set('removeParents', body.removeParents);
     const r = await fetch(`${driveBase}/files/${encodeURIComponent(body.id)}?${qp.toString()}`, {
@@ -821,7 +1058,10 @@ async function handleDrive(request, env, origin, path, ctx) {
 
   // POST /drive/mkpub — make file publicly readable
   if (subPath === '/mkpub' && request.method === 'POST') {
+    // makes a file readable by ANYONE ON THE INTERNET — staff only
+    if (!driveStaff) return forbid('Staff only');
     const body = await request.json();
+    if (!validDriveId(body.id)) return json({ error: 'bad id' }, 400, origin);
     const r = await fetch(`${driveBase}/files/${body.id}/permissions`, {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
@@ -831,10 +1071,19 @@ async function handleDrive(request, env, origin, path, ctx) {
   }
 
   // DELETE /drive/delete — delete a file
+  // STEP 8 (owner order): DELETE is STAFF-ONLY now. Students must never be
+  // able to delete anything — not other people's files (already blocked)
+  // and not their own chats either ("students must just not be able to
+  // delete chats"). Chat saving no longer needs deletes: both clients
+  // PATCH chat.json in place instead of delete+re-upload.
   if (subPath === '/delete' && request.method === 'DELETE') {
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
     if (!id) return json({ error: 'No id' }, 400, origin);
+    if (!driveStaff) {
+      return json({ error: 'Deleting is limited to teachers and admins. Ask a teacher if something needs to be removed.' }, 403, origin);
+    }
+    if (!validDriveId(id)) return json({ error: 'bad id' }, 400, origin);
     const r = await fetch(`${driveBase}/files/${id}`, { method: 'DELETE', headers });
     if (r.status === 204) {
       await fcBump(env);
@@ -869,6 +1118,27 @@ async function handleDrive(request, env, origin, path, ctx) {
       fileName = parsed.fileName; mimeType = parsed.mimeType;
     }
 
+    // metadata is forwarded to Drive: allow only known keys + valid parent ids
+    try {
+      const m = JSON.parse(metaText || '{}');
+      const clean = {};
+      for (const k of ['name', 'mimeType', 'parents', 'description']) if (m[k] !== undefined) clean[k] = m[k];
+      if (Array.isArray(clean.parents) && !clean.parents.every(validDriveId)) return json({ error: 'bad parent id' }, 400, origin);
+      if (clean.name) clean.name = String(clean.name).slice(0, 200);
+      metaText = JSON.stringify(clean);
+    } catch (e) { return json({ error: 'bad metadata' }, 400, origin); }
+    // STEP 8 SECURITY FIX: a student upload used to land ANYWHERE (Drive
+    // root, staff folders, other people's chats). Now the parent folder
+    // must be inside the student's own chats subtree; staff is unchanged.
+    if (!driveStaff) {
+      let parent = null;
+      try { parent = (JSON.parse(metaText).parents || [])[0] || null; } catch (e) {}
+      if (!parent || !(await studentOwnsChatItem(parent, driveEmail, headers, true))) {
+        return forbid('Students can only upload inside their own chats');
+      }
+    }
+    fileName = String(fileName || 'upload').replace(/["\r\n\\]/g, '_');
+    mimeType = String(mimeType || 'application/octet-stream').replace(/[\r\n]/g, '');
     const boundary = '-------XavierDriveUpload' + Date.now();
     const metaPart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metaText}\r\n`;
     const filePart = `--${boundary}\r\nContent-Type: ${mimeType}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\n\r\n`;
@@ -912,6 +1182,9 @@ async function handleDrive(request, env, origin, path, ctx) {
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
     if (!id) return json({ error: 'No id' }, 400, origin);
+    if (!validDriveId(id)) return json({ error: 'bad id' }, 400, origin);
+    // students cannot read other people's chats or the staff role folders
+    if (!driveStaff && !(await studentMayRead(id, driveEmail, headers))) return forbid('Not allowed to read this file');
     const exportMime = url.searchParams.get('export');
 
     if (!exportMime) {
@@ -967,72 +1240,78 @@ function getGeminiKey(env) {
   return keys[Math.floor(Math.random() * keys.length)];
 }
 
-// —— Firebase RTDB rate limiting ———————————————————
-
-async function checkQuota(env, email, role) {
-  // Teachers and admins have no limit
-  if (role !== 'student') {
-    return { allowed: true, used: 0, limit: Infinity, remaining: Infinity };
-  }
-
-  const dbUrl = env.FIREBASE_DB_URL;
-  if (!dbUrl) {
-    // No Firebase configured — allow but warn
-    console.warn('FIREBASE_DB_URL not set — skipping quota check');
-    return { allowed: true, used: 0, limit: 30, remaining: 30 };
-  }
-
-  const safeEmail = email.replace(/[.#$/[\]]/g, '_');
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
-  try {
-    const r = await fetch(await fbAuthUrl(env, `${dbUrl}/usage/${safeEmail}.json`));
-    const data = await r.json();
-
-    // Reset count if it's a new day
-    if (!data || data.date !== today) {
-      await fetch(await fbAuthUrl(env, `${dbUrl}/usage/${safeEmail}.json`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count: 0, date: today }),
-      });
-      return { allowed: true, used: 0, limit: 30, remaining: 30 };
-    }
-
-    const limit = parseInt(env.STUDENT_GEMINI_LIMIT || '30');
-    const used = data.count || 0;
-
-    if (used >= limit) {
-      return { allowed: false, used, limit, remaining: 0 };
-    }
-
-    return { allowed: true, used, limit, remaining: limit - used };
-  } catch (e) {
-    console.error('Quota check failed:', e);
-    return { allowed: true, used: 0, limit: 30, remaining: 30 };
-  }
+// —— Daily message quota (step 7) ——————————————————————
+// One counter per user per IST day. Store = Firebase RTDB (atomic server-side
+// increment) when FIREBASE_DB_URL works, else a per-isolate memory map (weak:
+// resets when the isolate recycles, but far better than the old fail-open).
+// NOT KV: the Workers Free KV plan allows only 1,000 writes/day for the WHOLE
+// account, which one counter write per student message would exhaust and would
+// then break sessions. Old /usage/<email> node is no longer read or written.
+function istDay() { return new Date(Date.now() + 19800000).toISOString().slice(0, 10); }
+function msUntilIstMidnight() {
+  const n = Date.now() + 19800000;
+  return 86400000 - (n % 86400000);
 }
-
-async function incrementQuota(env, email) {
-  const dbUrl = env.FIREBASE_DB_URL;
-  if (!dbUrl) return;
-
-  const safeEmail = email.replace(/[.#$/[\]]/g, '_');
-  const today = new Date().toISOString().split('T')[0];
-
-  try {
-    const r = await fetch(await fbAuthUrl(env, `${dbUrl}/usage/${safeEmail}.json`));
-    const data = await r.json();
-    const count = (data && data.date === today) ? (data.count || 0) + 1 : 1;
-
-    await fetch(await fbAuthUrl(env, `${dbUrl}/usage/${safeEmail}.json`), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ count, date: today }),
-    });
-  } catch (e) {
-    console.error('Quota increment failed:', e);
+const _memUsage = new Map();   // 'email|day' -> count
+function _usagePath(env, email) {
+  const safe = String(email || 'unknown').toLowerCase().replace(/[.#$/[\]]/g, '_');
+  return `${env.FIREBASE_DB_URL}/usage2/${safe}/${istDay()}.json`;
+}
+async function usageRead(env, email) {
+  if (env.FIREBASE_DB_URL) {
+    try {
+      const r = await fetch(await fbAuthUrl(env, _usagePath(env, email)), { signal: AbortSignal.timeout(4000) });
+      if (r.ok) { const v = await r.json(); return { count: typeof v === 'number' ? v : 0, store: 'firebase' }; }
+      console.warn('quota read HTTP', r.status);
+    } catch (e) { console.warn('quota read failed:', e.message); }
   }
+  return { count: _memUsage.get(String(email).toLowerCase() + '|' + istDay()) || 0, store: 'memory' };
+}
+// delta = +1 (reserve) or -1 (refund). Returns the NEW count when the store
+// reports it, else null.
+async function usageAdd(env, email, delta) {
+  if (env.FIREBASE_DB_URL) {
+    try {
+      const r = await fetch(await fbAuthUrl(env, _usagePath(env, email)), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ '.sv': { increment: delta } }),
+        signal: AbortSignal.timeout(4000),
+      });
+      if (r.ok) { const v = await r.json().catch(() => null); return typeof v === 'number' ? v : null; }
+      console.warn('quota write HTTP', r.status);
+    } catch (e) { console.warn('quota write failed:', e.message); }
+  }
+  const k = String(email).toLowerCase() + '|' + istDay();
+  const n = Math.max(0, (_memUsage.get(k) || 0) + delta);
+  _memUsage.set(k, n);
+  if (_memUsage.size > 5000) for (const key of _memUsage.keys()) { if (!key.endsWith('|' + istDay())) _memUsage.delete(key); }
+  return n;
+}
+// profile comes from roleProfile(env, verifyRole(...)) — never from the client.
+async function checkQuota(env, email, profile) {
+  const limit = profile.dailyLimit;
+  const { count, store } = await usageRead(env, email);
+  return { allowed: count < limit, used: count, limit, remaining: Math.max(0, limit - count), store };
+}
+// Reserve one message BEFORE the AI call (so parallel tabs cannot all slip
+// under the limit), refund it if the whole request fails.
+async function reserveQuota(env, email, profile) {
+  const q = await checkQuota(env, email, profile);
+  if (!q.allowed) return { ok: false, ...q };
+  const n = await usageAdd(env, email, 1);
+  const used = n == null ? q.used + 1 : n;
+  if (n != null && n > q.limit) { await usageAdd(env, email, -1); return { ok: false, allowed: false, used: q.limit, limit: q.limit, remaining: 0, store: q.store }; }
+  return { ok: true, used, limit: q.limit, remaining: Math.max(0, q.limit - used), store: q.store };
+}
+async function refundQuota(env, email) { try { await usageAdd(env, email, -1); } catch (e) {} }
+function quotaExhaustedBody(q, profile) {
+  return {
+    error: profile.name === 'student'
+      ? `You have used all ${q.limit} AI messages for today. They reset at midnight (IST). Ask your teacher if you need more.`
+      : `Daily AI limit of ${q.limit} messages reached. It resets at midnight (IST).`,
+    quotaExhausted: true, quotaUsed: q.used, quotaLimit: q.limit,
+    resetAt: new Date(Date.now() + msUntilIstMidnight()).toISOString(),
+  };
 }
 
 // —— Groq call ———————————————————————————————————
@@ -1059,6 +1338,11 @@ Keep charts simple (max ~12 labels). Use them for marks, populations, comparison
 The user gets a download button. Use for essays, worksheets, code files, CSV data, study notes worth keeping. Multiple file blocks = multiple files; the app can zip them all.
 4. PDF: the app auto-creates PDFs when the user explicitly asks for one. Do not output PDF content yourself unless the user asks for a file.
 5. IMAGES: the app auto-generates images on explicit image requests.
+6. COPY BOXES: when the user needs text they will paste somewhere else (an email, a message, a caption, a formula, a command, a code snippet), put ONLY that text inside a copy block so the app shows it in a box with a one-tap Copy button:
+\`\`\`copy
+...the text to copy...
+\`\`\`
+Explain things OUTSIDE the block. One block per separate item. Never use a copy block for ordinary explanations.
 
 AGENTIC RULES
 - Work in at most 5-6 steps: search, read, answer, (chart/file), summarize. Keep it tight.
@@ -1107,6 +1391,138 @@ function messagesHaveImages(messages) {
   return messages.some(m => Array.isArray(m.content) && m.content.some(c => c && c.type === 'image_url'));
 }
 
+// ═══════════════════════════════════════════════════════
+// MODEL ROUTER (step 7) — difficulty -> tier -> per-provider model ladder,
+// per-role tier ceiling, per-role daily limit. Limits/model ids researched
+// 2026-09-30; numbers + sources in server/AI_LIMITS.md. Provider ORDER for
+// standard/pro is unchanged (owner directive); "lite" prefers Workers AI (the
+// biggest free pool per account: ~270k glm-flash output tokens/day).
+// Override any ladder without a redeploy: ROUTER_LADDER_JSON (text variable),
+// e.g. {"gemini":{"lite":["gemini-3.1-flash-lite"]}}.
+// ═══════════════════════════════════════════════════════
+const TIERS = ['lite', 'standard', 'pro'];
+const tierRank = (t) => Math.max(0, TIERS.indexOf(t));
+const clampTier = (t, max) => TIERS[Math.min(tierRank(t), tierRank(max || 'standard'))];
+const ROUTE_LADDER = {
+  groq: {
+    lite: ['openai/gpt-oss-20b'],
+    standard: ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b'],
+    pro: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b'],
+  },
+  openrouter: {
+    lite: ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free'],
+    standard: ['qwen/qwen3.8-27b:free', 'google/gemma-4-31b-it:free'],
+    pro: ['qwen/qwen3.8-27b:free', 'nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3-super-120b-a12b:free'],
+  },
+  cfai: {
+    lite: ['@cf/zai-org/glm-4.7-flash'],
+    standard: ['@cf/zai-org/glm-4.7-flash'],
+    pro: ['@cf/openai/gpt-oss-120b', '@cf/zai-org/glm-4.7-flash'],
+  },
+  gemini: {
+    // 3.8-flash free = ~20 requests/day/project (reported, Google only shows it in AI Studio);
+    // flash-lite = ~500/day. Lite id is UNVERIFIED -> a 404 just falls through to the next id.
+    lite: ['gemini-3.1-flash-lite', 'gemini-3.8-flash'],
+    standard: ['gemini-3.8-flash', 'gemini-flash-latest'],
+    pro: ['gemini-3.8-flash', 'gemini-flash-latest'],
+  },
+};
+let _ladderOverrideRaw = null, _ladderOverride = null;
+function ladderOverride(env) {
+  const raw = env.ROUTER_LADDER_JSON || '';
+  if (raw === _ladderOverrideRaw) return _ladderOverride;
+  _ladderOverrideRaw = raw; _ladderOverride = null;
+  if (raw) { try { const o = JSON.parse(raw); if (o && typeof o === 'object') _ladderOverride = o; } catch (e) { console.warn('ROUTER_LADDER_JSON invalid'); } }
+  return _ladderOverride;
+}
+function modelsFor(env, provider, tier, hasImages) {
+  let t = TIERS.includes(tier) ? tier : 'standard';
+  // Image questions on Gemini: keep the scarce 3.8-flash quota for 'pro'; flash-lite reads images too.
+  if (hasImages && provider === 'gemini' && t === 'standard') t = 'lite';
+  const ov = ladderOverride(env)?.[provider]?.[t];
+  if (Array.isArray(ov) && ov.length && ov.every(x => typeof x === 'string' && x.length < 100)) return ov;
+  return ROUTE_LADDER[provider][t];
+}
+function providerOrder(tier) {
+  return tier === 'lite' ? ['cfai', 'groq', 'openrouter', 'gemini'] : ['groq', 'openrouter', 'cfai', 'gemini'];
+}
+function roleProfile(env, verified) {
+  const num = (v, d) => { const n = parseInt(v, 10); return n > 0 ? n : d; };
+  if (verified?.isDeveloper) return { name: 'developer', maxTier: 'pro', dailyLimit: num(env.DEV_DAILY_LIMIT, 2000) };
+  if (verified?.isAdmin) return { name: 'admin', maxTier: 'pro', dailyLimit: num(env.ADMIN_DAILY_LIMIT, 1000) };
+  if (verified?.role === 'teacher') return { name: 'teacher', maxTier: 'pro', dailyLimit: num(env.TEACHER_DAILY_LIMIT, 300) };
+  return {
+    name: 'student',
+    maxTier: TIERS.includes(env.STUDENT_MAX_TIER) ? env.STUDENT_MAX_TIER : 'standard',
+    dailyLimit: num(env.STUDENT_DAILY_LIMIT || env.STUDENT_GEMINI_LIMIT, 30),
+  };
+}
+// Free, instant first pass. confident:false = worth asking the tiny LLM.
+function heuristicDifficulty(message, history, hasImages) {
+  const m = String(message || '').trim();
+  const len = m.length;
+  if (len < 60 && /^(hi|hii+|hello|hey|thanks?|thank you|ok(ay)?|good (morning|afternoon|evening|night)|bye|who are you|what('?s| is) your name)\b/i.test(m)) return { difficulty: 'easy', confident: true };
+  if (len < 90 && /^(what is|what's|who is|who was|when (is|was)|where is|define|meaning of|full form of|spell|translate)\b/i.test(m) && !hasImages) return { difficulty: 'easy', confident: true };
+  let score = 0;
+  if (len > 1500) score += 2; else if (len > 500) score += 1;
+  if (/```|\bdef \w+\(|\bfunction\b|\bclass \w+|#include|\bSELECT\b.+\bFROM\b|<\/?[a-z][^>]*>/i.test(m)) score += 2;
+  // strong = the task itself is hard; soft = merely asks for depth (student traffic is capped at 'standard' anyway)
+  if (/\b(prove|proof|derive|derivation|integrate|differentiate|optimi[sz]e|algorithm|time complexity|architecture|debug|refactor|implement|write (me )?(a |an )?(program|code|script)|lesson plan|question paper)\b/i.test(m)) score += 3;
+  if (/\b(step[- ]by[- ]step|in detail|detailed|analy[sz]e|compare and contrast|essay|research|worksheet)\b/i.test(m)) score += 1;
+  if (/\b(pdf|chart|graph|table|spreadsheet|presentation|report)\b/i.test(m) && len > 120) score += 1;
+  if (Array.isArray(history) && history.length > 12) score += 1;
+  if (hasImages) score += 1;
+  if (score >= 3) return { difficulty: 'hard', confident: true };
+  if (score === 0) return { difficulty: len < 200 ? 'easy' : 'medium', confident: len < 200 };
+  return { difficulty: 'medium', confident: false };
+}
+const CLASSIFIER_PROMPT = 'You triage requests for a school AI tutor. Reply with ONLY compact JSON: {"difficulty":"easy|medium|hard","needs_tools":true|false}. easy = greeting, chit-chat, one-fact lookup, definition, short rewrite or translation. medium = normal homework help, explanations, summaries, short writing, simple maths. hard = multi-step reasoning or maths proofs, programming, data analysis, long or technical writing, any long structured deliverable. needs_tools = true if it needs live web information, a file/PDF/chart, or code output. No other text.';
+const _diffCache = new Map();
+async function classifyDifficulty(env, message, history, hasImages) {
+  const h = heuristicDifficulty(message, history, hasImages);
+  if (h.confident || env.ROUTER_LLM_CLASSIFY === '0') return { ...h, source: 'heuristic' };
+  const key = String(message).slice(0, 300);
+  if (_diffCache.has(key)) return { ..._diffCache.get(key), source: 'cache' };
+  try {
+    const raw = await Promise.race([
+      callGroqOrCerebras(env, [{ role: 'user', content: String(message).slice(0, 700) }], CLASSIFIER_PROMPT, { tier: 'lite', maxTokens: 160, noClassify: true }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('classifier timeout')), 5000)),
+    ]);
+    const d = /"difficulty"\s*:\s*"(easy|medium|hard)"/i.exec(String(raw));
+    if (d) {
+      const out = { difficulty: d[1].toLowerCase(), confident: true, needsTools: /"needs_tools"\s*:\s*true/i.test(String(raw)) };
+      if (_diffCache.size > 200) _diffCache.clear();
+      _diffCache.set(key, out);
+      return { ...out, source: 'llm' };
+    }
+  } catch (e) { console.warn('[router] classifier failed, using heuristic:', e.message); }
+  return { ...h, source: 'heuristic-fallback' };
+}
+// -> { tier, wanted, difficulty, maxTier, role, dailyLimit, needsTools, source }
+async function planRoute(env, { message, history, hasImages, profile }) {
+  const cls = await classifyDifficulty(env, message, history, hasImages);
+  let wanted = cls.difficulty === 'easy' ? 'lite' : cls.difficulty === 'hard' ? 'pro' : 'standard';
+  if (hasImages && wanted === 'lite') wanted = 'standard';
+  return {
+    tier: clampTier(wanted, profile.maxTier), wanted, difficulty: cls.difficulty,
+    maxTier: profile.maxTier, role: profile.name, dailyLimit: profile.dailyLimit,
+    needsTools: !!cls.needsTools, source: cls.source,
+  };
+}
+// Backend -> /internal/ai/call. The backend may send {tier,maxTier,purpose};
+// an un-updated backend sends none of them -> heuristic on the last user turn,
+// capped at 'standard' so unknown traffic never spends 'pro' models.
+function internalTier(body, messages) {
+  const cap = TIERS.includes(body.maxTier) ? body.maxTier : (TIERS.includes(body.tier) ? 'pro' : 'standard');
+  if (['plan', 'classify', 'title', 'route'].includes(body.purpose)) return 'lite';
+  if (TIERS.includes(body.tier)) return clampTier(body.tier, cap);
+  const last = [...messages].reverse().find(m => m.role === 'user');
+  const txt = Array.isArray(last?.content) ? (last.content.find(c => c.type === 'text')?.text || '') : String(last?.content || '');
+  const h = heuristicDifficulty(txt.slice(0, 2000), messages, messagesHaveImages(messages));
+  return clampTier(h.difficulty === 'easy' ? 'lite' : h.difficulty === 'hard' ? 'pro' : 'standard', cap);
+}
+let _lastTierUsed = '';
+
 // —— GROQ — 5 keys on separate accounts ————————————————
 // 2026-09-26 lineup (llama-3.3-70b is RETIRED on Groq): gpt-oss-120b flagship,
 // gpt-oss-20b fast, qwen3.8-27b alt. All text-only -> images are flattened.
@@ -1120,13 +1536,20 @@ function pickGroqKey(env) {
   }
   return null;
 }
-async function callGroq(env, messages, systemPrompt, maxTokens = 4096) {
+async function callGroq(env, messages, systemPrompt, maxTokens = 4096, models = GROQ_MODELS) {
   const flat = flattenToText(messages);
   let lastErr = null;
+  // Groq's free 8k TPM window is charged for the max_tokens you DECLARE, on top of the prompt.
+  // Without this cap, any request with research context (~6k tokens) is rejected with 413.
+  const sysText = systemPrompt || GROQ_SYSTEM_PROMPT;
+  const inEst = Math.ceil((JSON.stringify(flat).length + sysText.length) / 3.2);
+  const budget = (parseInt(env.GROQ_TPM_LIMIT, 10) || 8000) - inEst - 64;
+  if (budget < 512) { const e = new Error('Groq skipped: prompt too large for the free TPM window'); e.noBreaker = true; throw e; }
+  maxTokens = Math.min(maxTokens, budget);
   for (let round = 0; round < 3; round++) {
     const picked = pickGroqKey(env);
     if (!picked) break;
-    for (const model of GROQ_MODELS) {
+    for (const model of models) {
       try {
         const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -1145,6 +1568,7 @@ async function callGroq(env, messages, systemPrompt, maxTokens = 4096) {
           lastErr = new Error(`Groq key#${picked.idx + 1} rate-limited`);
           break; // key-limited -> next key, not next model
         }
+        if (r.status === 413) { lastErr = new Error('Groq 413 (over the TPM window)'); lastErr.noBreaker = true; break; }
         if (r.status === 401 || r.status === 403) {
           markKeyDown('groq#' + picked.idx, 24 * 3600 * 1000);
           lastErr = new Error(`Groq key#${picked.idx + 1} rejected (${r.status})`);
@@ -1158,15 +1582,18 @@ async function callGroq(env, messages, systemPrompt, maxTokens = 4096) {
       } catch (e) { lastErr = e; }
     }
   }
-  throw new Error('Groq failed: ' + (lastErr?.message || 'no usable keys'));
+  { const fe = new Error('Groq failed: ' + (lastErr?.message || 'no usable keys')); fe.noBreaker = !!lastErr?.noBreaker; throw fe; }
 }
 
 // —— OPENROUTER — 5 keys, separate accounts, :free models ————
 // Free tier: 50 free-model requests/day per account (creator ids verified
 // distinct 2026-09-26). Free models also have per-model capacity 429s
 // (qwen/gemma sometimes busy) -> model fallback chain handles it.
-const OPENROUTER_MODELS = ['qwen/qwen3.8-27b:free', 'google/gemma-4-31b-it:free', 'inclusionai/ling-3.0-flash-sante:free', 'nvidia/nemotron-3-super-120b-a12b:free'];
-const OR_FREE_DAILY = 50;
+// STEP 7 (applied in step 8): dropped inclusionai/ling-3.0-flash-sante:free
+// (unrated — no reason to spend scarce daily requests on it), added
+// gemma-4-26b-a4b; the router normally passes the ROUTE_LADDER list anyway.
+const OPENROUTER_MODELS = ['qwen/qwen3.8-27b:free', 'google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free', 'nvidia/nemotron-3-super-120b-a12b:free'];
+let OR_FREE_DAILY = 50;   // env OR_FREE_DAILY: set 1000 on an account that has ever bought $10 of credits
 const _orDaily = new Map();                          // 'openrouter#idx' -> {day, count}
 function orDailyLeft(idx) {
   const day = new Date().toISOString().slice(0, 10);
@@ -1183,6 +1610,7 @@ function orDailyUse(idx) {
 }
 let _orIdx = 0;
 function pickOpenRouterKey(env) {
+  OR_FREE_DAILY = parseInt(env.OR_FREE_DAILY, 10) || 50;
   const keys = getJsonList(env, 'OPENROUTER_KEYS_JSON');
   for (let i = 0; i < keys.length; i++) {
     const idx = (_orIdx + i) % keys.length;
@@ -1190,13 +1618,13 @@ function pickOpenRouterKey(env) {
   }
   return null;
 }
-async function callOpenRouter(env, messages, systemPrompt, maxTokens = 4096) {
+async function callOpenRouter(env, messages, systemPrompt, maxTokens = 4096, models = OPENROUTER_MODELS) {
   const flat = flattenToText(messages);
   let lastErr = null;
   for (let round = 0; round < 3; round++) {
     const picked = pickOpenRouterKey(env);
     if (!picked) break;
-    for (const model of OPENROUTER_MODELS) {
+    for (const model of models) {
       try {
         const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -1249,13 +1677,13 @@ function pickCfEntry(env) {
   }
   return null;
 }
-async function callCfAi(env, messages, systemPrompt, maxTokens = 4096) {
+async function callCfAi(env, messages, systemPrompt, maxTokens = 4096, models = CF_AI_MODELS) {
   const flat = flattenToText(messages);
   let lastErr = null;
   for (let round = 0; round < 2; round++) {
     const picked = pickCfEntry(env);
     if (!picked) break;
-    for (const model of CF_AI_MODELS) {
+    for (const model of models) {
       try {
         const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${picked.entry.account}/ai/run/${model}`, {
           method: 'POST',
@@ -1297,26 +1725,29 @@ function markProviderUp(name) { _aiCooldowns.delete(name); }
 
 async function callGroqOrCerebras(env, messages, systemPrompt, opts = {}) {
   const maxTokens = opts.maxTokens || 4096;
+  const tier = TIERS.includes(opts.tier) ? opts.tier : 'standard';
   const hasImages = messagesHaveImages(messages);
+  const M = (p) => modelsFor(env, p, tier, hasImages);
+  const run = (p, msgs) => p === 'groq' ? callGroq(env, msgs, systemPrompt, maxTokens, M('groq'))
+                        : p === 'openrouter' ? callOpenRouter(env, msgs, systemPrompt, maxTokens, M('openrouter'))
+                        : p === 'cfai' ? callCfAi(env, msgs, systemPrompt, maxTokens, M('cfai'))
+                        : callGeminiChat(env, msgs, systemPrompt, M('gemini'));
   // Image messages: only Gemini is multimodal in our lineup -> try it first.
-  const order = hasImages ? ['gemini', 'cfai'] : ['groq', 'openrouter', 'cfai', 'gemini'];
+  const order = hasImages ? ['gemini', 'cfai'] : providerOrder(tier);
   const live = order.filter(p => !providerCooling(p));
   const tryList = live.length ? live : order;
   let lastError = null;
   for (const p of tryList) {
     if (hasImages && (p === 'groq' || p === 'openrouter')) continue; // text-only models
     try {
-      const text = p === 'groq' ? await callGroq(env, messages, systemPrompt, maxTokens)
-                : p === 'openrouter' ? await callOpenRouter(env, messages, systemPrompt, maxTokens)
-                : p === 'cfai' ? await callCfAi(env, messages, systemPrompt, maxTokens)
-                : await callGeminiChat(env, messages, systemPrompt);
+      const text = await run(p, messages);
       markProviderUp(p);
-      _lastProviderUsed = p;
+      _lastProviderUsed = p; _lastTierUsed = tier;
       return text;
     } catch (e) {
-      markProviderDown(p);
+      if (!e.noBreaker) markProviderDown(p);   // a too-big prompt must not take Groq down for everyone
       lastError = e;
-      console.warn(`[ai-router] ${p} failed: ${e.message}`);
+      console.warn(`[ai-router] ${p}/${tier} failed: ${e.message}`);
     }
   }
   // Last resort for image messages: answer text-only (tell the user).
@@ -1324,10 +1755,8 @@ async function callGroqOrCerebras(env, messages, systemPrompt, opts = {}) {
     const flat = flattenToText(messages);
     for (const p of ['groq', 'openrouter', 'cfai']) {
       try {
-        const text = p === 'groq' ? await callGroq(env, flat, systemPrompt, maxTokens)
-                  : p === 'openrouter' ? await callOpenRouter(env, flat, systemPrompt, maxTokens)
-                  : await callCfAi(env, flat, systemPrompt, maxTokens);
-        _lastProviderUsed = p;
+        const text = await run(p, flat);
+        _lastProviderUsed = p; _lastTierUsed = tier;
         return '_(Image could not be processed by the available AI providers right now — answering from your text only.)_\n\n' + text;
       } catch (e) { lastError = e; }
     }
@@ -1355,13 +1784,13 @@ async function callGemini(env, prompt, systemInstruction = null, jsonMode = fals
 // untouched) -> rotation is now safe per-key.
 const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-flash-latest'];
 
-async function geminiGenerate(env, body) {
+async function geminiGenerate(env, body, models = GEMINI_MODELS) {
   const keyMap = getJsonList(env, 'GEMINI_KEYS_JSON');
   if (!keyMap.length) throw new Error('No Gemini keys configured');
   let lastError = null;
   let sawGeoBlock = false;
   for (const key of keyMap) {
-    for (const model of GEMINI_MODELS) {
+    for (const model of models) {
       try {
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: 'POST',
@@ -1394,7 +1823,7 @@ async function geminiGenerate(env, body) {
   // backend's memory only.
   if (sawGeoBlock) {
     try {
-      return await geminiViaBackend(env, body, keyMap);
+      return await geminiViaBackend(env, body, keyMap, models);
     } catch (e) {
       console.warn('gemini backend relay failed:', e.message);
       lastError = e;
@@ -1404,7 +1833,7 @@ async function geminiGenerate(env, body) {
 }
 
 // Relay a Gemini call through the backend (encrypted key, memory-only decrypt).
-async function geminiViaBackend(env, body, keyMap) {
+async function geminiViaBackend(env, body, keyMap, models = GEMINI_MODELS) {
   const base = (env.BACKEND_URL || '').replace(/\/+$/, '');
   if (!base) throw new Error('no BACKEND_URL for gemini relay');
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -1418,7 +1847,7 @@ async function geminiViaBackend(env, body, keyMap) {
       'Content-Type': 'application/json',
       'X-Gemini-Key-Enc': b64(iv) + '.' + b64(enc),
     },
-    body: JSON.stringify({ geminiBody: body, models: GEMINI_MODELS }),
+    body: JSON.stringify({ geminiBody: body, models }),
     signal: AbortSignal.timeout(90000),
   });
   const d = await r.json().catch(() => ({}));
@@ -1430,7 +1859,7 @@ async function geminiViaBackend(env, body, keyMap) {
 
 // Chat-style Gemini call: converts OpenAI-style messages (incl. multimodal
 // image_url data-URIs) into Gemini contents format.
-async function callGeminiChat(env, messages, systemPrompt) {
+async function callGeminiChat(env, messages, systemPrompt, models = GEMINI_MODELS) {
   const contents = messages.map(m => {
     const role = m.role === 'assistant' ? 'model' : 'user';
     if (Array.isArray(m.content)) {
@@ -1451,7 +1880,7 @@ async function callGeminiChat(env, messages, systemPrompt) {
     systemInstruction: { parts: [{ text: systemPrompt || GROQ_SYSTEM_PROMPT }] },
     generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
   };
-  return geminiGenerate(env, body);
+  return geminiGenerate(env, body, models);
 }
 
 // —— Per-user rate limiter (in-memory, lightweight) ————————————
@@ -1564,7 +1993,7 @@ async function backendChat(env, payload) {
 // the worker injects keys and runs the provider router. Server-to-server
 // (X-Backend-Key auth, no Origin header, CSRF-exempted).
 async function handleInternalAICall(request, env) {
-  if (request.headers.get('X-Backend-Key') !== (env.BACKEND_KEY || '')) {
+  if (!backendKeyOk(request, env)) {
     return json({ error: 'unauthorized' }, 401);
   }
   let body;
@@ -1578,8 +2007,9 @@ async function handleInternalAICall(request, env) {
   const systemPrompt = systemExtra ? (GROQ_SYSTEM_PROMPT + '\n\n' + systemExtra) : GROQ_SYSTEM_PROMPT;
   const maxTokens = Math.min(parseInt(body.maxTokens, 10) || 4096, 8192);
   try {
-    const text = await callGroqOrCerebras(env, messages, systemPrompt, maxTokens);
-    return json({ ok: true, text, provider: _lastProviderUsed, cooldowns: [..._aiCooldowns.keys()] });
+    const tier = internalTier(body, messages);
+    const text = await callGroqOrCerebras(env, messages, systemPrompt, { maxTokens, tier });
+    return json({ ok: true, text, provider: _lastProviderUsed, tier, cooldowns: [..._aiCooldowns.keys()] });
   } catch (e) {
     return json({ ok: false, error: e.message }, 502);
   }
@@ -1589,7 +2019,7 @@ async function handleInternalAICall(request, env) {
 // Pings every provider key with a zero-token GET /models call and reports
 // status + available models. Never returns key values.
 async function handleAIStatus(request, env) {
-  if (request.headers.get('X-Backend-Key') !== (env.BACKEND_KEY || '')) {
+  if (!backendKeyOk(request, env)) {
     return json({ error: 'unauthorized' }, 401);
   }
   const probe = async (name, url, headers) => {
@@ -1647,7 +2077,7 @@ async function handleAIStatus(request, env) {
     };
     const openRouterProbeKey = async (key) => {
       let lastErr = null;
-      for (const model of ['qwen/qwen3.8-27b:free', 'nvidia/nemotron-3-super-120b-a12b:free', 'inclusionai/ling-3.0-flash-sante:free']) {
+      for (const model of ['qwen/qwen3.8-27b:free', 'nvidia/nemotron-3-super-120b-a12b:free', 'google/gemma-4-26b-a4b-it:free']) {
         try {
           const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
@@ -1717,13 +2147,48 @@ async function handleAIStatus(request, env) {
     providerOrder: ['groq', 'openrouter', 'cfai (workers-ai)', 'gemini (backup)'],
     results,
     deep,
-    router: { cooldowns, keyCooldowns, lastProviderUsed: _lastProviderUsed },
+    router: { cooldowns, keyCooldowns, lastProviderUsed: _lastProviderUsed, lastTierUsed: _lastTierUsed, ladder: ROUTE_LADDER, ladderOverride: !!ladderOverride(env) },
   });
+}
+
+// —— Agentic event helpers (step 6) ——————————————————————————————
+// One-line "what just happened" note for a finished step. Templated from
+// the step's own detail (no extra LLM call, so it costs nothing).
+function agentStepSummary(step) {
+  const d = String(step.detail || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 90);
+  const l = String(step.title || '').toLowerCase();
+  if (!d) return '';
+  if (l.includes('search')) return 'Searched the web for \u201c' + d + '\u201d.';
+  if (l.includes('read')) return 'Read ' + d + '.';
+  return '';
+}
+
+// Metadata for every ```file / ```pdffile block in an answer, so the app can
+// show a "Created notes.md" action row. The block itself stays in the text
+// (the app renders the card from it and it persists in chat history).
+function agentArtifactMeta(text) {
+  const out = [];
+  const re = /```(pdffile|file)\n([\s\S]*?)```/g;
+  let m;
+  while ((m = re.exec(String(text || ''))) && out.length < 6) {
+    const head = m[2].slice(0, 400);
+    const nm = /"name"\s*:\s*"([^"\\]{1,120})"/.exec(head);
+    const mt = /"mime"\s*:\s*"([^"\\]{1,80})"/.exec(head);
+    const name = (nm ? nm[1] : (m[1] === 'pdffile' ? 'document.pdf' : 'file')).replace(/[\u0000-\u001f\/\\]/g, '_');
+    const mime = mt ? mt[1] : (m[1] === 'pdffile' ? 'application/pdf' : 'text/plain');
+    const type = m[1] === 'pdffile' ? 'pdf' : (/html/i.test(mime) || /\.html?$/i.test(name)) ? 'html' : 'file';
+    out.push({ name, type, mime });
+  }
+  return out;
 }
 
 // —— AI Chat STREAM handler (z.ai-style agent steps) ————————————
 // SSE events: {t:'step',icon,label,detail} while researching, then
-// {t:'answer',text,provider,searched,sources}. Primary path = backend chat
+// {t:'answer',text,provider,searched,sources}. (Website format - unchanged.)
+// STEP 6: when the body carries agentic:true (the Android app) the SAME run
+// is emitted as typed events instead: step {id,title,detail,icon,status:
+// running|done}, summary {text}, artifact {name,type,mime}, text {delta},
+// done {provider,searched,sources}. Primary path = backend chat
 // engine (research + steps streamed live); fallback = worker-direct answer
 // if the backend is unreachable.
 async function handleAIChatStream(request, env, origin) {
@@ -1738,11 +2203,20 @@ async function handleAIChatStream(request, env, origin) {
   try { body = await request.json(); } catch (e) { return json({ error: 'invalid JSON' }, 400, origin); }
   const { message, history, images } = body;
   if (!message) return json({ error: 'No message provided' }, 400, origin);
+  const agentic = body.agentic === true;
 
-  const userEmail = body.email || sess.user?.email || 'unknown';
-  const userRole = body.role || 'student';
+  // STEP 8 SECURITY FIX: identity comes from the SESSION ONLY. The old
+  // `body.email || sess.user?.email` let any logged-in student SPOOF a
+  // teacher's email -> pro-tier models + the 300/day teacher quota.
+  const userEmail = (sess.user?.email || '').toLowerCase() || 'unknown';
   const verifiedRole = await verifyRole(env, userEmail);
-  const actualRole = verifiedRole.role || userRole;
+  const actualRole = verifiedRole.role || 'student';
+
+  // step 7: the stream path used to have NO quota check at all (students could bypass the limit).
+  const profile = roleProfile(env, verifiedRole);
+  const quota = await reserveQuota(env, userEmail, profile);
+  if (!quota.ok) return json(quotaExhaustedBody(quota, profile), 429, origin);
+  const route = await planRoute(env, { message, history, hasImages: Array.isArray(images) && images.length > 0, profile });
 
   // v1.1.5: the STREAM path now builds the SAME context the JSON path
   // does — AI memory + school data + the chat's WORKSPACE files. It is
@@ -1767,6 +2241,22 @@ async function handleAIChatStream(request, env, origin) {
     async start(controller) {
       const enc = new TextEncoder();
       const send = (obj) => { try { controller.enqueue(enc.encode('data: ' + JSON.stringify(obj) + '\n\n')); } catch (e) {} };
+      // step 6: typed agentic events (only when the client asks for them)
+      let stepSeq = 0, openStep = null;
+      const closeStep = () => {
+        if (!openStep) return;
+        send({ t: 'step', id: openStep.id, title: openStep.title, detail: openStep.detail, icon: openStep.icon, status: 'done' });
+        const sm = agentStepSummary(openStep);
+        if (sm) send({ t: 'summary', text: sm });
+        openStep = null;
+      };
+      const sendAnswer = (text, provider, searched, sources) => {
+        if (!agentic) { send({ t: 'answer', text, provider, searched: !!searched, sources: sources || [] }); return; }
+        closeStep();
+        for (const a of agentArtifactMeta(text)) send({ t: 'artifact', ...a });
+        send({ t: 'text', delta: text });
+        send({ t: 'done', provider, searched: !!searched, sources: sources || [], quotaUsed: quota.used, quotaLimit: quota.limit, tier: route.tier });
+      };
       try {
         // PRIMARY: backend chat engine with live research steps
         const base = (env.BACKEND_URL || '').replace(/\/+$/, '');
@@ -1783,6 +2273,7 @@ async function handleAIChatStream(request, env, origin) {
                 history: Array.isArray(history) ? history.slice(-30) : [],
                 images, agent: 'site-chat',
                 context: userContext || null,
+                route: { tier: route.tier, maxTier: route.maxTier, difficulty: route.difficulty, needsTools: route.needsTools },
               }),
               signal: AbortSignal.timeout(120000),
             });
@@ -1802,9 +2293,13 @@ async function handleAIChatStream(request, env, origin) {
                   if (!line) continue;
                   let ev; try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
                   if (ev.t === 'answer') {
-                    send({ t: 'answer', text: sanitizeAIResponse(ev.text), provider: ev.provider, searched: !!ev.searched, sources: ev.sources || [] });
+                    sendAnswer(sanitizeAIResponse(ev.text), ev.provider, ev.searched, ev.sources);
                     answered = true;
-                  } else if (ev.t !== 'error') {
+                  } else if (ev.t === 'step' && agentic) {
+                    closeStep();
+                    openStep = { id: ++stepSeq, title: String(ev.label || 'Working').slice(0, 80), detail: String(ev.detail || '').slice(0, 160), icon: String(ev.icon || '').slice(0, 8) };
+                    send({ t: 'step', id: openStep.id, title: openStep.title, detail: openStep.detail, icon: openStep.icon, status: 'running' });
+                  } else if (ev.t !== 'error' && !agentic) {
                     send(ev);
                   }
                 }
@@ -1832,11 +2327,12 @@ async function handleAIChatStream(request, env, origin) {
           } else {
             messages.push({ role: 'user', content: message });
           }
-          const text = await callGroqOrCerebras(env, messages, GROQ_SYSTEM_PROMPT + '\n\n' + systemExtra);
-          send({ t: 'answer', text: sanitizeAIResponse(text), provider: _lastProviderUsed, searched: false, sources: [] });
+          const text = await callGroqOrCerebras(env, messages, GROQ_SYSTEM_PROMPT + '\n\n' + systemExtra, { tier: route.tier });
+          sendAnswer(sanitizeAIResponse(text), _lastProviderUsed, false, []);
         }
       } catch (e) {
         console.error('AI chat stream error:', e);
+        await refundQuota(env, userEmail);
         send({ t: 'error', error: e.message || 'AI service temporarily unavailable' });
       }
       try { controller.close(); } catch (e) {}
@@ -1897,8 +2393,13 @@ async function handlePDFFile(request, env, origin) {
 
   let body;
   try { body = await request.json(); } catch (e) { return json({ error: 'invalid JSON' }, 400, origin); }
-  const { prompt, history, title, role, email, markdown } = body;
+  const { prompt, history, title, markdown } = body;
   if (!prompt && !markdown) return json({ error: 'No prompt provided' }, 400, origin);
+
+  // STEP 8 SECURITY FIX: role context comes from the SESSION, not the body
+  // (a student could claim role=teacher to get unrestricted PDF content).
+  const pdfEmail = (sess.user?.email || '').toLowerCase() || 'unknown';
+  const pdfRoleName = (await verifyRole(env, pdfEmail)).role || 'student';
 
   const base = (env.BACKEND_URL || '').replace(/\/+$/, '');
   if (!base) return json({ error: 'PDF service unavailable (backend not configured)' }, 503, origin);
@@ -1916,8 +2417,8 @@ async function handlePDFFile(request, env, origin) {
         prompt: prompt ? fullPrompt : undefined,
         markdown: markdown ? String(markdown).slice(0, 200000) : undefined,
         title: title ? String(title).slice(0, 200) : undefined,
-        roleCtx: `[role=${role || 'student'}]`,
-        email: email || sess.user?.email || 'unknown',
+        roleCtx: `[role=${pdfRoleName}]`,
+        email: pdfEmail,
       }),
       signal: AbortSignal.timeout(120000),
     });
@@ -1940,9 +2441,9 @@ async function handlePDFFile(request, env, origin) {
 // developer session for the owner account so maintenance agents can test the
 // logged-in site without going through Google OAuth.
 async function handleDevLogin(request, env) {
-  if (!env.DEV_LOGIN_SECRET) return json({ error: 'dev login disabled' }, 404);
+  if (!env.DEV_LOGIN_SECRET || String(env.DEV_LOGIN_SECRET).length < 24) return json({ error: 'dev login disabled' }, 404);
   const url = new URL(request.url);
-  if (url.searchParams.get('token') !== env.DEV_LOGIN_SECRET) return json({ error: 'bad token' }, 403);
+  if (!safeEqual(url.searchParams.get('token') || '', env.DEV_LOGIN_SECRET)) return json({ error: 'bad token' }, 403);
   const sid = await makeSessionId(env.SESSION_SECRET || 'fallback-secret');
   await setSession(env, sid, {
     user: { email: 'quackeditzofficial@gmail.com', name: 'Amrit Raj', picture: '' },
@@ -1986,13 +2487,20 @@ async function handleAIChat(request, env, origin, ctx) {
 
   if (!message) return json({ error: 'No message provided' }, 400, origin);
 
-  const userEmail = email || sess.user?.email || 'unknown';
-  const userRole = role || 'student';
+  // STEP 8 SECURITY FIX: identity comes from the SESSION ONLY (the old
+  // body.email trust allowed quota + tier escalation by email spoofing).
+  const userEmail = (sess.user?.email || '').toLowerCase() || 'unknown';
 
   // Verify role server-side to prevent privilege escalation
   const verifiedRole = await verifyRole(env, userEmail);
-  const actualRole = verifiedRole.role || userRole;
+  const actualRole = verifiedRole.role || 'student';
   const actualIsAdmin = verifiedRole.isAdmin;
+
+  // step 7: server-verified profile -> daily limit + tier ceiling, then reserve one message.
+  const profile = roleProfile(env, verifiedRole);
+  const quota = await reserveQuota(env, userEmail, profile);
+  if (!quota.ok) return json(quotaExhaustedBody(quota, profile), 429, origin);
+  const quotaBase = { quotaUsed: quota.used, quotaLimit: quota.limit, quotaExhausted: false };
 
   // —— v1.2.0: MEMORY + SCHOOL CONTEXT (owner directive) ————————————
   // The AI remembers durable facts about the user (Claude/ChatGPT-style,
@@ -2029,6 +2537,9 @@ async function handleAIChat(request, env, origin, ctx) {
     base64: String(img.base64 || '').substring(0, 1024 * 1024), // 1MB per image max
   })).filter(img => img.base64) : [];
 
+  // step 7: classify difficulty -> tier (the backend forwards route.tier/maxTier to /internal/ai/call)
+  const route = await planRoute(env, { message, history, hasImages: safeImages.length > 0, profile });
+
   // —— PRIMARY: backend chat engine (research-first + answer) ——————
   // All chat work runs on the CrazyCloud server (owner directive 2026-09-25):
   // it researches the question, then calls back into /internal/ai/call for
@@ -2039,6 +2550,7 @@ async function handleAIChat(request, env, origin, ctx) {
       email: userEmail, class: studentClass,
       history: (history || []).slice(-30), images: safeImages, agent: 'site-chat',
       context: userContext || null,
+      route: { tier: route.tier, maxTier: route.maxTier, difficulty: route.difficulty, needsTools: route.needsTools },
     });
     const resp = sanitizeAIResponse(out.response);
     if (ctx && ctx.waitUntil && !resp.trimStart().startsWith('[CANCEL]')) {
@@ -2052,9 +2564,7 @@ async function handleAIChat(request, env, origin, ctx) {
       response: resp,
       model: out.provider,
       searched: !!out.searched,
-      quotaUsed: 0,
-      quotaLimit: userRole === 'student' ? parseInt(env.STUDENT_GEMINI_LIMIT || '30') : Infinity,
-      quotaExhausted: false,
+      ...quotaBase, difficulty: route.difficulty, tier: route.tier,
     }, 200, origin);
   } catch (e) {
     console.warn('backend chat engine failed, using worker fallback:', e.message);
@@ -2081,7 +2591,7 @@ async function handleAIChat(request, env, origin, ctx) {
       messages.push({ role: 'user', content: message });
     }
 
-    const aiResponse = sanitizeAIResponse(await callGroqOrCerebras(env, messages, GROQ_SYSTEM_PROMPT + '\n\n' + systemExtra));
+    const aiResponse = sanitizeAIResponse(await callGroqOrCerebras(env, messages, GROQ_SYSTEM_PROMPT + '\n\n' + systemExtra, { tier: route.tier }));
 
     if (aiResponse.trimStart().startsWith('[CANCEL]')) {
       return json({
@@ -2095,13 +2605,12 @@ async function handleAIChat(request, env, origin, ctx) {
       response: aiResponse,
       model: _lastProviderUsed,
       searched: false,
-      quotaUsed: 0,
-      quotaLimit: userRole === 'student' ? parseInt(env.STUDENT_GEMINI_LIMIT || '30') : Infinity,
-      quotaExhausted: false,
+      ...quotaBase, difficulty: route.difficulty, tier: route.tier,
     }, 200, origin);
 
   } catch (e) {
     console.error('AI Chat error:', e);
+    await refundQuota(env, userEmail);   // the user got nothing -> no charge
     return json({
       error: 'AI service temporarily unavailable. Please try again.',
       details: e.message,
@@ -2116,17 +2625,16 @@ async function handleQuota(request, env, origin) {
   const sess = await getSession(env, cookies);
   if (!sess) return json({ error: 'Not authenticated' }, 401, origin);
 
-  const url = new URL(request.url);
-  const email = url.searchParams.get('email') || sess.user?.email || 'unknown';
-  const role = url.searchParams.get('role') || 'student';
-
-  const quota = await checkQuota(env, email, role);
+  // step 7: identity and role come from the SESSION, never from query parameters.
+  const email = sess.user?.email || 'unknown';
+  const profile = roleProfile(env, await verifyRole(env, email));
+  const quota = await checkQuota(env, email, profile);
 
   return json({
     used: quota.used,
     limit: quota.limit,
     remaining: quota.remaining,
-    resetAt: new Date(new Date().setHours(24, 0, 0, 0)).toISOString(),
+    resetAt: new Date(Date.now() + msUntilIstMidnight()).toISOString(),
   }, 200, origin);
 }
 
@@ -2383,22 +2891,25 @@ async function ensurePlaylist(env, className) {
 let _fbToken = null;
 let _fbTokenExp = 0;
 
+// STEP 8 FIX: the three regexes below were double-escaped (\\+, \\s, \\/
+// matched literal backslash sequences, not base64 chars / whitespace) — the
+// Firebase JWT would have failed the moment FIREBASE_SERVICE_ACCOUNT is added.
 function b64urlFromBytes(bytes) {
   let bin = '';
   const arr = new Uint8Array(bytes);
   for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
-  return btoa(bin).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function b64urlFromJson(obj) {
-  return btoa(JSON.stringify(obj)).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
+  return btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function pemToBuf(pem) {
   const body = String(pem)
     .replace('-----BEGIN PRIVATE KEY-----', '')
     .replace('-----END PRIVATE KEY-----', '')
-    .replace(/\\s+/g, '');
+    .replace(/\s+/g, '');
   const raw = atob(body);
   const buf = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
@@ -3605,8 +4116,9 @@ async function handleFirebaseHandRaise(request, env, origin) {
 async function handleTranscriptVerify(request, env, origin) {
   const { secret, videoId, transcript, summary, className } = await request.json();
 
-  // Verify the shared secret
-  if (!secret || secret !== env.TRANSCRIPT_SECRET) {
+  // Verify the shared secret (STEP 8: constant-time compare — the plain
+  // !== could leak the secret's length/prefix through response timing)
+  if (!env.TRANSCRIPT_SECRET || !safeEqual(String(secret || ''), env.TRANSCRIPT_SECRET)) {
     return json({ error: 'Invalid transcript secret' }, 403, origin);
   }
 
@@ -4205,10 +4717,10 @@ async function handleChatsDedup(request, env, origin) {
 // Bump these when releasing a new APK — the app checks this on every launch.
 // apkUrl must point at the publicly-hosted APK on the Pages site.
 const APP_LATEST = {
-  versionCode: 19,
-  versionName: '1.1.6',
-  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.1.6.apk',
-  notes: "XavierDrive v1.1.6 — SECURITY RELEASE. Removed the internal credentials file that was accidentally packaged inside the app (your data and accounts were never at risk — it held only public app configuration, but it should never have shipped). This build is otherwise identical to v1.1.5: chat dedup + AI workspace + image previews + file cards. Update recommended for everyone."
+  versionCode: 20,
+  versionName: '1.1.7',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.1.7.apk',
+  notes: "XavierDrive v1.1.7 — the Claude-collab release. AI chat redesigned: agentic answer steps with live action rows, native charts, copy boxes, pause/resume listening with live word highlight, Claude-style composer (Enter = new line, mic that appends instead of replacing, + menu with Generate image for everyone). Server: smart model router with per-role daily limits (students 30/day), Drive security hardened (scoped listings, staff-only deletes, email-spoofing closed). Update recommended for everyone."
 };
 
 function handleAppVersion(origin) {
