@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <title>XavierDrive</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.youtube.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://stxaviers-auth.quackeditzofficial.workers.dev https://stxaviers-official-default-rtdb.firebaseio.com https://www.googleapis.com https://lh3.googleusercontent.com https://i.ytimg.com https://image.pollinations.ai; media-src 'self' blob:; frame-src 'self' https://www.youtube.com https://youtube.com;" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.youtube.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://stxaviers-auth.quackeditzofficial.workers.dev https://stxaviersapp-default-rtdb.firebaseio.com https://www.googleapis.com https://lh3.googleusercontent.com https://i.ytimg.com https://image.pollinations.ai; media-src 'self' blob:; frame-src 'self' https://www.youtube.com https://youtube.com;" />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&family=Cinzel+Decorative:wght@700&family=Inter:wght@400;500;600&family=Merriweather:wght@400;700&family=Roboto+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,700;1,400&family=Nunito:wght@400;600;700&family=Poppins:wght@400;500;600&family=Raleway:wght@400;600;700&family=Source+Code+Pro:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2034,6 +2034,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     </div>
     <div class="chat-header-center">
       <span class="chat-header-title" id="chat-title" onclick="startRenameChat()" title="Click to rename">XavierDrive AI</span>
+      <span id="chat-quota" style="display:none;font-size:10.5px;color:var(--muted);background:var(--s2);border:1px solid var(--border);border-radius:999px;padding:2px 8px;margin-left:8px;white-space:nowrap;" title="Your AI messages today (resets at midnight IST)"></span>
     </div>
     <div class="chat-header-right">
       <button class="chat-close" onclick="toggleChat()">✕</button>
@@ -2251,6 +2252,17 @@ async function callAI(message,opts={}){
   return {text:d.response,model:d.model,quotaUsed:d.quotaUsed||0,quotaLimit:d.quotaLimit||0,quotaExhausted:d.quotaExhausted||false,escalated:d.escalated||false};
 }
 async function checkQuota(){try{const r=await fetch(WORKER+'/api/quota?email='+(currentUser?.email||'')+'&role='+(role||'student'),{credentials:'include'});return await r.json();}catch(e){return{used:0,limit:30,remaining:30};}}
+// v1.1.8: the live usage chip — backend-stored daily count, shown the
+// moment the AI panel opens and refreshed after every answer
+async function refreshQuotaChip(){
+  try{
+    const q=await checkQuota();
+    const el=document.getElementById('chat-quota');
+    if(!el)return;
+    if(q&&q.limit>0&&q.used!=null){el.textContent=Math.min(q.used,q.limit)+'/'+q.limit+' today';el.style.display='';}
+    else{el.style.display='none';}
+  }catch(e){}
+}
 function showQuotaBanner(used,limit){
   let b=document.getElementById('quota-banner');
   if(!b){b=document.createElement('div');b.id='quota-banner';b.style.cssText='position:fixed;bottom:0;left:0;right:0;background:linear-gradient(90deg,#1a1208,#2a1a0a);color:#f7c44f;padding:10px 16px;font-size:12px;text-align:center;z-index:9998;border-top:1px solid #f7c44f30;';const cp=document.getElementById('chat-panel');if(cp)cp.appendChild(b);else document.body.appendChild(b);}
@@ -4882,6 +4894,7 @@ function toggleChat(){
     // Apply current user's AI prefs when opening chat
     applyAIPrefs();
     renderChatBody();
+    refreshQuotaChip();
     setTimeout(()=>{const i=document.getElementById('cinput');if(i)i.focus();},300);
   }
 }
@@ -5096,6 +5109,19 @@ function renderMarkdown(text,mid){
         }
       }catch(e){/* fall through */}
     }
+    // —— v1.1.8: AI image block → the drawn picture, in chat ————
+    if(lang==='image'){
+      let prompt='';
+      try{
+        const meta=JSON.parse(code.trim());
+        if(meta&&meta.prompt)prompt=String(meta.prompt);
+      }catch(e){}
+      if(!prompt)prompt=code.trim();
+      if(prompt){
+        blocks.push({id,html:imageBoxHTML(prompt)});
+        return`\x00CODEBLOCK_${id}\x00`;
+      }
+    }
     const highlighted=highlightCode(code.trim(),lang);
     blocks.push({id,html:`<div class="code-block">
       <div class="code-block-header">
@@ -5130,6 +5156,14 @@ function fileBoxHTML(mid,fidx,name,mime,size){
 }
 function pdfBoxHTML(mid,meta){
   return `<div class="file-box"><div class="fb-icon">📄</div><div class="fb-main"><div class="fb-name">${esc(meta.name)}</div><div class="fb-meta">PDF document · ${humanSize(meta.size)||'generated'}</div></div><div class="fb-actions"><button class="fb-btn" onclick="downloadPdfArtifact('${mid}')">⬇ Download</button></div></div>`;
+}
+// v1.1.8: one ```image block — the prompt's hash is the seed, so the same
+// block always draws the same picture (reloads + other devices agree)
+function seedFrom(p){let h=0;for(let i=0;i<String(p).length;i++){h=((h<<5)-h+String(p).charCodeAt(i))|0;}return Math.abs(h);}
+function imageBoxHTML(prompt){
+  const url='https://image.pollinations.ai/prompt/'+encodeURIComponent(String(prompt).slice(0,500))+'?width=768&height=768&nologo=true&seed='+seedFrom(prompt);
+  const nm='ai-image-'+seedFrom(prompt);
+  return `<div class="ai-image-wrap"><img src="${esc(url)}" alt="AI generated image" loading="lazy" onclick="openImgLightbox('${esc(url)}')"/><div class="ai-image-actions"><button onclick="downloadAIImage('${esc(url)}','${esc(nm)}')">⬇ Download</button></div></div>`;
 }
 
 function copyCodeBlock(id,btn){
@@ -5529,18 +5563,20 @@ function humanSize(n){
 }
 // extract ```file blocks from an AI message (works after reloads too — the
 // content lives inside the message text itself)
+// v1.1.8 HARDENING: a ```file block whose JSON meta line is missing or
+// malformed STILL becomes a downloadable file (generated name) — the user
+// must never see raw JSON soup because a model forgot the exact format.
 function extractMsgFiles(text){
   const files=[];
-  const re=/```file\n([\s\S]*?)```/g;let m;
+  const re=/```file\r?\n([\s\S]*?)```/g;let m;
   while((m=re.exec(String(text||'')))){
     const body=m[1];
     const nl=body.indexOf('\n');
-    if(nl<0)continue;
     let meta={};
-    try{meta=JSON.parse(body.slice(0,nl));}catch(e){continue;}
-    const content=body.slice(nl+1).replace(/\n$/,'');
-    if(!meta.name)continue;
-    files.push({name:String(meta.name),mime:String(meta.mime||'text/plain'),content});
+    if(nl>0){try{meta=JSON.parse(body.slice(0,nl));}catch(e){}}
+    const content=(nl>0?body.slice(nl+1):body).replace(/\n$/,'');
+    const name=(meta&&meta.name)?String(meta.name):('file-'+(files.length+1)+'.txt');
+    files.push({name,mime:String((meta&&meta.mime)||'text/plain'),content});
   }
   return files;
 }
@@ -5813,7 +5849,7 @@ async function sendMsg(){
     }else{
       addAIMsg('\u26a0\ufe0f Error: '+(e.message||'Unknown error'));
     }
-  }finally{clearTimeout(_stopTimer);isGenerating=false;currentAbort=null;setStopMode(false);}
+  }finally{clearTimeout(_stopTimer);isGenerating=false;currentAbort=null;setStopMode(false);refreshQuotaChip();}
 }
 
 // ═══════════════════════════════════════════════════
@@ -7216,7 +7252,7 @@ function startAnnouncementPoller(){
 // ═══════════════════════════════════════════════════════════════
 // LIVE CLASSES SYSTEM
 // ═══════════════════════════════════════════════════════════════
-const FIREBASE_URL='https://stxaviers-official-default-rtdb.firebaseio.com';
+const FIREBASE_URL='https://stxaviersapp-default-rtdb.firebaseio.com';
 let liveSubTab='active';
 let liveActiveClass=null;
 let liveChatUnsub=null;
