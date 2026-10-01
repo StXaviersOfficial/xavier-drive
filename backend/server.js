@@ -723,6 +723,28 @@ RULES:
 - For worksheets/tests: number every question, include marks in brackets, add an Answer Key section at the end.
 - Language must suit Indian school students (Classes 1-12).`;
 
+// —— DAILY AI USAGE STORE (v2.5.0, owner directive 2026-09-30) ————————
+// One JSON number per user per IST day:
+//   storage/XavierDrive/usage/<YYYY-MM-DD-IST>/<sanitized-email>.json
+// The worker's quota layer calls these endpoints BEFORE its Firebase/memory
+// fallbacks, so the daily AI counter is durable (survives isolate restarts,
+// consistent across every Cloudflare edge) — the "usage chip resets when I
+// reopen the AI" bug. Auth = the global X-Backend-Key check above.
+function istDayStr() {
+  return new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+function usageEmailKey(raw) {
+  return String(raw || '').toLowerCase().replace(/[^a-z0-9._-]/g, '_').slice(0, 80) || 'unknown';
+}
+function usageCount(day, key) {
+  try {
+    const f = path.join(ROOT, 'usage', day, key + '.json');
+    if (!fs.existsSync(f)) return 0;
+    const n = parseInt(fs.readFileSync(f, 'utf8').trim(), 10);
+    return Number.isFinite(n) && n > 0 ? Math.min(n, 1000000) : 0;
+  } catch (e) { return 0; }
+}
+
 // —— HTTP ————————————————————————————————————————
 function readBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
@@ -743,7 +765,7 @@ const server = http.createServer(async (req, res) => {
       try { const s = fs.statfsSync ? fs.statfsSync(ROOT) : null; if (s) diskFree = s.bsize * s.bavail; } catch (e) {}
       return send(200, JSON.stringify({
         ok: true, uptime: Math.round(process.uptime()), rssMB: Math.round(process.memoryUsage().rss / 1048576),
-        node: process.version, server: 'xavierdrive-backend', version: '2.4.1',
+        node: process.version, server: 'xavierdrive-backend', version: '2.5.0',
         storage: { root: '/storage/XavierDrive', usedBytes: dirSize(ROOT), files: buildTree(ROOT, '/', 0) ? countFiles(buildTree(ROOT, '/', 0)) : 0 },
       }));
     }
@@ -817,6 +839,27 @@ const server = http.createServer(async (req, res) => {
       ensureDir(path.dirname(to));
       fs.renameSync(from, to);
       return send(200, JSON.stringify({ ok: true, from: body.from, to: body.to }));
+    }
+
+    // DAILY USAGE STORE (worker quota backend)
+    if (p === '/internal/usage' && req.method === 'GET') {
+      const key = usageEmailKey(u.searchParams.get('email'));
+      const day = istDayStr();
+      return send(200, JSON.stringify({ ok: true, day, count: usageCount(day, key) }));
+    }
+    if (p === '/internal/usage' && req.method === 'POST') {
+      const raw = await readBody(req, 10240);
+      let body; try { body = JSON.parse(raw.toString('utf8')); } catch (e) { return send(400, JSON.stringify({ error: 'invalid JSON' })); }
+      const key = usageEmailKey(body.email);
+      let delta = parseInt(body.delta, 10);
+      if (!Number.isFinite(delta)) delta = 1;
+      delta = Math.max(-10, Math.min(10, delta));     // reserve/refund only
+      const day = istDayStr();
+      const dir = path.join(ROOT, 'usage', day);
+      ensureDir(dir);
+      const next = Math.max(0, Math.min(1000000, usageCount(day, key) + delta));
+      fs.writeFileSync(path.join(dir, key + '.json'), String(next));
+      return send(200, JSON.stringify({ ok: true, day, count: next }));
     }
 
     // AI TERMINAL
@@ -1025,7 +1068,7 @@ const server = http.createServer(async (req, res) => {
       return send(502, JSON.stringify({ ok: false, error: 'all relay keys/models failed: ' + lastErr }));
     }
 
-    return send(404, JSON.stringify({ error: 'not found', endpoints: ['GET /health', 'POST /pdf', 'GET /files', 'GET /files/tree', 'GET /files/download', 'PUT /files/upload', 'POST /files/mkdir', 'POST /files/delete', 'POST /files/move', 'POST /exec', 'GET /ai/sessions', 'GET /ai/log', 'POST /ai/search', 'POST /ai/fetch', 'POST /ai/research', 'POST /ai/chat', 'POST /ai/chat/stream', 'POST /ai/title', 'POST /ai/pdf', 'POST /ai/relay/gemini'] }));
+    return send(404, JSON.stringify({ error: 'not found', endpoints: ['GET /health', 'POST /pdf', 'GET /files', 'GET /files/tree', 'GET /files/download', 'PUT /files/upload', 'POST /files/mkdir', 'POST /files/delete', 'POST /files/move', 'GET /internal/usage', 'POST /internal/usage', 'POST /exec', 'GET /ai/sessions', 'GET /ai/log', 'POST /ai/search', 'POST /ai/fetch', 'POST /ai/research', 'POST /ai/chat', 'POST /ai/chat/stream', 'POST /ai/title', 'POST /ai/pdf', 'POST /ai/relay/gemini'] }));
   } catch (e) {
     LOG(`ERROR ${req.method} ${p}: ${e.stack}`);
     return send(500, JSON.stringify({ error: e.message }));
@@ -1040,6 +1083,6 @@ function countFiles(node) {
 
 ensureDir(ROOT);
 ensureDir(AI_ROOT);
-server.listen(PORT, '0.0.0.0', () => LOG(`XavierDrive backend v2.4.0 on 0.0.0.0:${PORT} (node ${process.version}, pid ${process.pid}) storage=${ROOT} [AI: chat engine + terminal + search + AI-planned research + AI chat titles + pdf] worker-proxy=${WORKER_URL}`));
+server.listen(PORT, '0.0.0.0', () => LOG(`XavierDrive backend v2.5.0 on 0.0.0.0:${PORT} (node ${process.version}, pid ${process.pid}) storage=${ROOT} [AI: chat engine + terminal + search + AI-planned research + AI chat titles + pdf + usage-store] worker-proxy=${WORKER_URL}`));
 process.on('uncaughtException', (e) => LOG(`uncaught: ${e.stack}`));
 process.on('unhandledRejection', (e) => LOG(`unhandled: ${e}`));
