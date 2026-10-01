@@ -53,7 +53,7 @@
 
 const VIDEO_ID = process.argv[2];
 const CLASS_NAME = process.argv[3] || 'Unknown';
-const FIREBASE_URL = 'https://stxaviers-official-default-rtdb.firebaseio.com';
+const FIREBASE_URL = 'https://stxaviersapp-default-rtdb.firebaseio.com';
 const GROQ_KEY = process.env.GROQ_KEY || '';
 
 if (!GROQ_KEY) {
