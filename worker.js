@@ -16,7 +16,7 @@
 //    OPENROUTER_KEYS_JSON    — JSON array of OpenRouter keys (free models)
 //    CF_AI_KEYS_JSON         — JSON [{"token":"cfut_...","account":"<id>"}] Workers AI
 //    GEMINI_KEYS_JSON        — JSON array of Gemini API keys
-//    FIREBASE_DB_URL         — https://stxaviers-official-default-rtdb.firebaseio.com
+//    FIREBASE_DB_URL         — https://stxaviersapp-default-rtdb.firebaseio.com
 //    STUDENT_GEMINI_LIMIT    — "30" (text variable)
 // ============================================================
 
@@ -764,7 +764,7 @@ async function studentMayRead(id, email, hdrs) {
   let ok = true;
   for (let i = 0; i < chain.length; i++) {
     const n = chain[i].name;
-    if (n === 'TEACHERS' || n === 'ADMINS' || n === 'DEVELOPERS') { ok = false; break; }
+    if (n === 'TEACHERS' || n === 'ADMINS' || n === 'DEVELOPERS' || n === 'BUG_REPORTS') { ok = false; break; }
     if (n === 'CHATS' && i > 0) {                       // chain[i-1] = <email> folder
       if (chain[i - 1].name.toLowerCase() !== email) { ok = false; }
       break;
@@ -1258,6 +1258,25 @@ function _usagePath(env, email) {
   return `${env.FIREBASE_DB_URL}/usage2/${safe}/${istDay()}.json`;
 }
 async function usageRead(env, email) {
+  // v1.1.8 (owner directive "live tracker via backend"): the 32GB backend
+  // is the PRIMARY daily-usage store — durable disk, consistent across every
+  // Cloudflare isolate (the old per-isolate memory map is what made the
+  // usage chip reset whenever the AI screen reopened). Firebase stays second
+  // (used the day the owner adds FIREBASE_SERVICE_ACCOUNT), memory last.
+  if (await backendOk(env)) {
+    try {
+      const base = env.BACKEND_URL.replace(/\/+$/, '');
+      const r = await fetch(`${base}/internal/usage?email=${encodeURIComponent(String(email || '').toLowerCase())}`, {
+        headers: { 'X-Backend-Key': env.BACKEND_KEY },
+        signal: AbortSignal.timeout(4000),
+      });
+      if (r.ok) {
+        const d = await r.json().catch(() => null);
+        if (d && typeof d.count === 'number') return { count: d.count, store: 'backend' };
+      }
+      console.warn('quota read (backend) HTTP', r.status);
+    } catch (e) { console.warn('quota read (backend) failed:', e.message); }
+  }
   if (env.FIREBASE_DB_URL) {
     try {
       const r = await fetch(await fbAuthUrl(env, _usagePath(env, email)), { signal: AbortSignal.timeout(4000) });
@@ -1270,6 +1289,26 @@ async function usageRead(env, email) {
 // delta = +1 (reserve) or -1 (refund). Returns the NEW count when the store
 // reports it, else null.
 async function usageAdd(env, email, delta) {
+  // backend-first (see usageRead) — the atomic reserve/refund lands on disk
+  if (await backendOk(env)) {
+    try {
+      const base = env.BACKEND_URL.replace(/\/+$/, '');
+      const r = await fetch(`${base}/internal/usage`, {
+        method: 'POST',
+        headers: { 'X-Backend-Key': env.BACKEND_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: String(email || '').toLowerCase(), delta }),
+        signal: AbortSignal.timeout(4000),
+      });
+      if (r.ok) {
+        const v = await r.json().catch(() => null);
+        if (v && typeof v.count === 'number') {
+          _memUsage.set(String(email).toLowerCase() + '|' + istDay(), v.count);
+          return v.count;
+        }
+      }
+      console.warn('quota write (backend) HTTP', r.status);
+    } catch (e) { console.warn('quota write (backend) failed:', e.message); }
+  }
   if (env.FIREBASE_DB_URL) {
     try {
       const r = await fetch(await fbAuthUrl(env, _usagePath(env, email)), {
@@ -1330,14 +1369,18 @@ YOUR ABILITIES (the app renders these automatically)
 {"type":"bar|line|pie","title":"...","labels":["..."],"datasets":[{"label":"...","data":[0,0]}]}
 \`\`\`
 Keep charts simple (max ~12 labels). Use them for marks, populations, comparisons, trends — not for everything.
-3. FILES: deliver keepable content as a downloadable file block:
+3. FILES: deliver keepable content as a downloadable file block. THE FORMAT IS EXACT — the FIRST line inside the fence is the JSON meta, then the raw file content:
 \`\`\`file
 {"name":"notes.md","mime":"text/markdown"}
 ...file content...
 \`\`\`
-The user gets a download button. Use for essays, worksheets, code files, CSV data, study notes worth keeping. Multiple file blocks = multiple files; the app can zip them all.
+CRITICAL RULES: the JSON meta line must be the very first line after the opening fence (no blank line before it). Never nest triple-backtick fences inside a file block — indent inner code with 4 spaces instead. Never wrap the block in another fence. The user gets a download button and a file card. Use for essays, worksheets, code files, CSV data, study notes worth keeping. Multiple file blocks = multiple files.
 4. PDF: the app auto-creates PDFs when the user explicitly asks for one. Do not output PDF content yourself unless the user asks for a file.
-5. IMAGES: the app auto-generates images on explicit image requests.
+5. IMAGES: you CAN generate images. Whenever the user asks for a picture, drawing, photo, illustration, artwork, or says "draw/make/generate an image of X", output an image block:
+\`\`\`image
+{"prompt":"a detailed English description of the image to draw"}
+\`\`\`
+Write ONE short friendly line before the block (e.g. "Here's your image:") and nothing after it. The app draws the image and displays it in the chat. NEVER say you cannot generate images — you can, through this block. One block per image; the prompt must be self-contained English.
 6. COPY BOXES: when the user needs text they will paste somewhere else (an email, a message, a caption, a formula, a command, a code snippet), put ONLY that text inside a copy block so the app shows it in a box with a one-tap Copy button:
 \`\`\`copy
 ...the text to copy...
@@ -4713,14 +4756,421 @@ async function handleChatsDedup(request, env, origin) {
   }
 }
 
+// ═══════════════════════════════════════════════════════
+//  BUG REPORTS (owner spec 2026-09-30, v1.1.8)
+//  Drive layout (mirrored ≤100MB to the backend like every upload):
+//    Xavier-Drive/BUG_REPORTS/bugreport#NNN/bug.txt
+//    Xavier-Drive/BUG_REPORTS/bugreport#NNN/<attached files>
+//  bug.txt is human-readable AND machine-parsed (the dev tools rewrite the
+//  Status: line and append responses).
+//  Access: everyone may REPORT and read their OWN reports (with status +
+//  developer responses). Only DEVELOPERS list all reports, respond, and set
+//  status (Under review [default] / Resolved / False).
+// ═══════════════════════════════════════════════════════
+const BUG_STATUSES = ['Under review', 'Resolved', 'False'];
+const BUG_MAX_FILE = 100 * 1024 * 1024;          // owner spec: 100MB or less
+let _bugRootId = null;
+
+async function bugRoot(env, headers) {
+  if (_bugRootId) return _bugRootId;
+  const xd = await driveFindChild(env, headers, 'root', 'Xavier-Drive', true);
+  if (!xd) throw new Error('Xavier-Drive root missing');
+  let bugs = await driveFindChild(env, headers, xd, 'BUG_REPORTS', true);
+  if (!bugs) {
+    const r = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'BUG_REPORTS', mimeType: 'application/vnd.google-apps.folder', parents: [xd] }),
+    });
+    const d = await r.json();
+    if (!d.id) throw new Error('BUG_REPORTS create failed');
+    bugs = d.id;
+  }
+  _bugRootId = bugs;
+  return bugs;
+}
+
+function istStamp() {
+  const d = new Date(Date.now() + 19800000);      // IST
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  let h = d.getUTCHours(); const am = h < 12 ? 'am' : 'pm'; h = h % 12 || 12;
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${h}:${String(d.getUTCMinutes()).padStart(2, '0')} ${am} IST (${new Date().toISOString()})`;
+}
+
+function bugTxtBuild(id, reporter, message, deviceSummary) {
+  const dev = String(deviceSummary || '').trim();
+  return 'XavierDrive Bug Report\n\n'
+    + 'ID: ' + id + '\n'
+    + 'Reporter: ' + reporter + '\n'
+    + 'Reported: ' + istStamp() + '\n'
+    + 'Status: Under review\n'
+    + (dev ? 'Device: ' + dev + '\n' : '')
+    + '\nMessage:\n' + String(message || '').trim() + '\n\n'
+    + '--- Developer responses ---\n(none yet)\n';
+}
+
+function bugTxtParse(text) {
+  const t = String(text || '');
+  const line = (k) => {
+    const m = new RegExp('^' + k + ':\\s*(.*)$', 'm').exec(t);
+    return m ? m[1].trim() : '';
+  };
+  const msgIdx = t.indexOf('\nMessage:\n');
+  const respIdx = t.indexOf('\n--- Developer responses ---');
+  let message = '';
+  if (msgIdx >= 0) {
+    const from = msgIdx + '\nMessage:\n'.length;
+    message = (respIdx > msgIdx ? t.slice(from, respIdx) : t.slice(from)).trim();
+  }
+  const responses = [];
+  if (respIdx >= 0) {
+    const raw = t.slice(respIdx + '\n--- Developer responses ---'.length).trim();
+    if (raw && raw !== '(none yet)') {
+      const re = /\[([^\]]+)\]\s+([^\n(]+)\(([^)\n]+)\):\n([\s\S]*?)(?=\n\n\[|$)/g;
+      let m;
+      while ((m = re.exec(raw))) responses.push({ ts: m[1].trim(), by: m[2].trim(), email: m[3].trim(), text: m[4].trim() });
+    }
+  }
+  return {
+    id: line('ID'), reporter: line('Reporter'), reported: line('Reported'),
+    status: BUG_STATUSES.includes(line('Status')) ? line('Status') : 'Under review',
+    device: line('Device'),
+    message, responses,
+  };
+}
+
+/** Drive multipart upload (multipart/related) — same wire format the
+ *  /drive/upload handler builds. Returns the Drive JSON. */
+async function driveUploadBytes(env, headers, fileName, parentId, mimeType, bytes) {
+  const uploadBase = 'https://www.googleapis.com/upload/drive/v3';
+  const boundary = '-------XavierDriveBug' + Date.now();
+  const meta = JSON.stringify({ name: fileName, parents: [parentId] });
+  const metaPart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n`;
+  const filePart = `--${boundary}\r\nContent-Type: ${mimeType}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\n\r\n`;
+  const endPart = `\r\n--${boundary}--`;
+  const enc = new TextEncoder();
+  const metaBytes = enc.encode(metaPart);
+  const filePartBytes = enc.encode(filePart);
+  const endBytes = enc.encode(endPart);
+  const body = new Uint8Array(metaBytes.length + filePartBytes.length + bytes.byteLength + endBytes.length);
+  body.set(metaBytes, 0);
+  body.set(filePartBytes, metaBytes.length);
+  body.set(new Uint8Array(bytes), metaBytes.length + filePartBytes.length);
+  body.set(endBytes, metaBytes.length + filePartBytes.length + bytes.byteLength);
+  const r = await fetch(`${uploadBase}/files?uploadType=multipart&fields=id,name,size,mimeType`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  });
+  return await r.json();
+}
+
+/** Read one bug folder: {folderId, folderName, bug, attachments}. */
+async function bugReadFolder(env, headers, f) {
+  try {
+    const children = await driveListChildren(env, headers, f.id);
+    const bugFile = children.find(c => c.name === 'bug.txt');
+    if (!bugFile) return null;
+    const r = await fetch(`https://www.googleapis.com/drive/v3/files/${bugFile.id}?alt=media`, { headers });
+    if (!r.ok) return null;
+    const bug = bugTxtParse(await r.text());
+    if (!bug.reporter) return null;
+    const attachments = children
+      .filter(c => c.name !== 'bug.txt')
+      .map(c => ({ name: c.name, size: c.size || 0, mimeType: c.mimeType || 'application/octet-stream' }));
+    return { folderId: f.id, folderName: f.name, bug, attachments, bugTxtId: bugFile.id };
+  } catch (e) { return null; }
+}
+
+async function bugListFolders(env, headers) {
+  const root = await bugRoot(env, headers);
+  const q = `'${root}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,createdTime)&orderBy=createdTime desc&pageSize=200`, { headers });
+  const d = await r.json();
+  return (d.files || []).filter(f => /^bugreport#\d+$/.test(String(f.name || '')));
+}
+
+/** POST /api/bugs — anyone logged in; creates the folder + bug.txt. */
+async function handleBugReport(request, env, origin, ctx) {
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const sess = await getSession(env, cookies);
+  if (!sess) return json({ error: 'Not authenticated' }, 401, origin);
+  const email = String(sess.user?.email || '').toLowerCase();
+  const rl = rateCheck(email || 'anon', 'bug', 3);
+  if (!rl.allowed) return json({ error: 'Too many reports — please wait ' + rl.retryAfter + 's.' }, 429, origin);
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'invalid JSON' }, 400, origin); }
+  const message = String(body.message || '').trim().slice(0, 8000);
+  if (message.length < 3) return json({ error: 'Please describe the bug (at least a few words).' }, 400, origin);
+
+  try {
+    const ownerToken = await getOwnerToken(env);
+    const headers = { Authorization: `Bearer ${ownerToken}` };
+    const root = await bugRoot(env, headers);
+    // next free number (scan existing folders)
+    const folders = await bugListFolders(env, headers);
+    let max = 0;
+    for (const f of folders) { const n = parseInt(String(f.name).replace('bugreport#', ''), 10); if (Number.isFinite(n) && n > max) max = n; }
+    let created = null, id = '';
+    for (let attempt = 0; attempt < 3 && !created; attempt++) {
+      id = 'bugreport#' + String(max + 1 + attempt).padStart(3, '0');
+      const mk = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: id, mimeType: 'application/vnd.google-apps.folder', parents: [root] }),
+      });
+      const d = await mk.json();
+      if (d.id) created = d;
+    }
+    if (!created) throw new Error('could not create the report folder');
+    // v1.1.8: device specs (owner order) — one summary line in bug.txt +
+    // the structured snapshot as device.json next to it
+    const deviceSummary = String(body.deviceSummary || '').trim().slice(0, 500);
+    const txt = bugTxtBuild(id, email, message, deviceSummary);
+    const up = await driveUploadBytes(env, headers, 'bug.txt', created.id, 'text/plain',
+      new TextEncoder().encode(txt));
+    if (ctx && up && up.id) {
+      ctx.waitUntil(mirrorPut(env, up.id, 'bug.txt', 'text/plain', null, new TextEncoder().encode(txt)));
+    }
+    if (body.device && typeof body.device === 'object'
+        && !Array.isArray(body.device)) {
+      try {
+        const dj = new TextEncoder().encode(JSON.stringify(body.device, null, 2));
+        const dup = await driveUploadBytes(env, headers, 'device.json',
+          created.id, 'application/json', dj);
+        if (ctx && dup && dup.id) {
+          ctx.waitUntil(mirrorPut(env, dup.id, 'device.json', 'application/json', null, dj));
+        }
+      } catch (e) { /* device specs must never fail the report itself */ }
+    }
+    return json({ ok: true, id, folderId: created.id, status: 'Under review' }, 200, origin);
+  } catch (e) {
+    return json({ error: 'Report failed: ' + e.message }, 500, origin);
+  }
+}
+
+/** GET /api/bugs/mine — own reports. GET /api/bugs — ALL (developer only). */
+async function handleBugList(request, env, origin, all) {
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const sess = await getSession(env, cookies);
+  if (!sess) return json({ error: 'Not authenticated' }, 401, origin);
+  const email = String(sess.user?.email || '').toLowerCase();
+  let isDev = false;
+  if (all) {
+    const roleInfo = await verifyRole(env, email);
+    if (!roleInfo.isDeveloper) return json({ error: 'Developer access required' }, 403, origin);
+    isDev = true;
+  }
+  try {
+    const ownerToken = await getOwnerToken(env);
+    const headers = { Authorization: `Bearer ${ownerToken}` };
+    const folders = await bugListFolders(env, headers);
+    const out = [];
+    for (const f of folders.slice(0, 200)) {
+      const rec = await bugReadFolder(env, headers, f);
+      if (!rec) continue;
+      if (!all && rec.bug.reporter.toLowerCase() !== email) continue;
+      out.push({
+        id: rec.bug.id, folderId: rec.folderId, reporter: isDev || all ? rec.bug.reporter : undefined,
+        reported: rec.bug.reported, status: rec.bug.status,
+        preview: rec.bug.message.slice(0, 140),
+        responses: rec.bug.responses.length,
+        attachments: rec.attachments.length,
+      });
+    }
+    return json({ ok: true, reports: out }, 200, origin);
+  } catch (e) {
+    return json({ error: 'Could not load reports: ' + e.message }, 500, origin);
+  }
+}
+
+/** Shared guard for one-report routes: loads the folder + bug, checks the
+ *  caller is the reporter or a developer. */
+async function bugLoadGuarded(request, env, origin, folderId) {
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const sess = await getSession(env, cookies);
+  if (!sess) return { err: json({ error: 'Not authenticated' }, 401, origin) };
+  const email = String(sess.user?.email || '').toLowerCase();
+  if (!validDriveId(folderId)) return { err: json({ error: 'bad report id' }, 400, origin) };
+  try {
+    const ownerToken = await getOwnerToken(env);
+    const headers = { Authorization: `Bearer ${ownerToken}` };
+    const rec = await bugReadFolder(env, headers, { id: folderId, name: '' });
+    if (!rec || !rec.bug.id) return { err: json({ error: 'Report not found' }, 404, origin) };
+    const roleInfo = await verifyRole(env, email);
+    const isDev = !!roleInfo.isDeveloper;
+    const isReporter = rec.bug.reporter.toLowerCase() === email;
+    if (!isDev && !isReporter) return { err: json({ error: 'You can only view your own bug reports.' }, 403, origin) };
+    return { rec, headers, email, isDev, isReporter };
+  } catch (e) {
+    return { err: json({ error: e.message }, 500, origin) };
+  }
+}
+
+/** GET /api/bugs/:id — full report for the reporter or a developer. */
+async function handleBugGet(request, env, origin, folderId) {
+  const g = await bugLoadGuarded(request, env, origin, folderId);
+  if (g.err) return g.err;
+  return json({
+    ok: true,
+    bug: { ...g.rec.bug, reporter: g.isDev ? g.rec.bug.reporter : g.rec.bug.reporter },
+    attachments: g.rec.attachments,
+    canRespond: g.isDev,
+    isMine: g.isReporter,
+  }, 200, origin);
+}
+
+/** GET /api/bugs/:id/file?f=<name> — stream one attachment. */
+async function handleBugFile(request, env, origin, folderId) {
+  const g = await bugLoadGuarded(request, env, origin, folderId);
+  if (g.err) return g.err;
+  const url = new URL(request.url);
+  const fname = String(url.searchParams.get('f') || '').replace(/[/\\?%*:|"<>\r\n]/g, '_').slice(0, 200);
+  if (!fname || fname === 'bug.txt') return json({ error: 'bad file name' }, 400, origin);
+  const att = g.rec.attachments.find(a => a.name === fname);
+  if (!att) return json({ error: 'File not found in this report' }, 404, origin);
+  // find the Drive id by exact name inside the folder
+  const q = `'${folderId}' in parents and name='${fname.replace(/'/g, "\\'")}' and trashed=false`;
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType)&pageSize=5`, { headers: g.headers });
+  const d = await r.json();
+  const file = (d.files || [])[0];
+  if (!file) return json({ error: 'File not found in this report' }, 404, origin);
+  const resHeaders = new Headers(corsHeaders(origin));
+  resHeaders.set('Content-Type', file.mimeType || 'application/octet-stream');
+  resHeaders.set('Content-Disposition', `attachment; filename="${fname.replace(/"/g, '')}"`);
+  const hot = await mirrorGet(env, file.id);
+  if (hot) {
+    resHeaders.set('Content-Type', hot.headers.get('Content-Type') || file.mimeType || 'application/octet-stream');
+    return new Response(hot.body, { status: 200, headers: resHeaders });
+  }
+  const dl = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, { headers: g.headers });
+  return new Response(dl.body, { status: dl.status, headers: resHeaders });
+}
+
+/** POST /api/bugs/:id/file — attach a file (reporter or developer, ≤100MB). */
+async function handleBugAttach(request, env, origin, folderId, ctx) {
+  const g = await bugLoadGuarded(request, env, origin, folderId);
+  if (g.err) return g.err;
+  // v1.1.8 audit hardening: uploads are rate-limited and one report carries
+  // at most 300 MB in TOTAL — the 100 MB per-file limit is the owner's spec,
+  // but without these caps one account could fill the school Drive fast.
+  const rlA = rateCheck(g.email, 'bugatt', 10);
+  if (!rlA.allowed) return json({ error: 'Too many uploads — please wait ' + rlA.retryAfter + 's.' }, 429, origin);
+  let metaName = 'attachment', fileBytes = null, mimeType = 'application/octet-stream';
+  const ctype = request.headers.get('Content-Type') || '';
+  try {
+    if (ctype.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      const fileBlob = formData.get('file');
+      if (!fileBlob || typeof fileBlob === 'string') return json({ error: 'Missing file' }, 400, origin);
+      fileBytes = await fileBlob.arrayBuffer();
+      metaName = fileBlob.name || 'attachment';
+      mimeType = fileBlob.type || 'application/octet-stream';
+    } else {
+      const parsed = parseMultipartRelated(await request.arrayBuffer(), ctype);
+      if (!parsed) return json({ error: 'Unrecognized upload format' }, 400, origin);
+      fileBytes = parsed.fileBytes;
+      metaName = parsed.fileName || 'attachment';
+      mimeType = parsed.mimeType || 'application/octet-stream';
+    }
+  } catch (e) {
+    return json({ error: 'Upload parse failed: ' + e.message }, 400, origin);
+  }
+  if (!fileBytes || fileBytes.byteLength === 0) return json({ error: 'Empty file' }, 400, origin);
+  if (fileBytes.byteLength > BUG_MAX_FILE) {
+    return json({ error: 'Attachments must be 100 MB or less.' }, 413, origin);
+  }
+  // anti-flood: a report carries at most 10 attachments
+  if (g.rec.attachments.length >= 10) {
+    return json({ error: 'This report already has 10 attachments.' }, 429, origin);
+  }
+  let bugTotalBytes = 0;
+  for (const a of g.rec.attachments) bugTotalBytes += parseInt(a.size, 10) || 0;
+  if (bugTotalBytes + fileBytes.byteLength > 300 * 1024 * 1024) {
+    return json({ error: 'This report already carries its maximum total attachment size (300 MB).' }, 413, origin);
+  }
+  const safe = String(metaName).replace(/["\r\n\\]/g, '_').replace(/^\.+/, '').slice(0, 180) || 'attachment';
+  // v1.1.8: the app writes these itself (device specs + the attached
+  // last-hour log) — user uploads may never clobber them
+  if (safe === 'bug.txt' || safe === 'device.json' || safe === 'latestlog.txt')
+    return json({ error: 'Reserved name' }, 400, origin);
+  try {
+    const up = await driveUploadBytes(env, g.headers, safe, folderId, mimeType, fileBytes);
+    if (ctx && up && up.id && fileBytes.byteLength <= MIRROR_MAX) {
+      ctx.waitUntil(mirrorPut(env, up.id, safe, mimeType, null, fileBytes));
+    }
+    return json({ ok: true, name: safe, size: fileBytes.byteLength }, 200, origin);
+  } catch (e) {
+    return json({ error: 'Attachment failed: ' + e.message }, 500, origin);
+  }
+}
+
+/** POST /api/bugs/:id — developer only: {response} and/or {status}. */
+async function handleBugUpdate(request, env, origin, folderId, ctx) {
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  const sess = await getSession(env, cookies);
+  if (!sess) return json({ error: 'Not authenticated' }, 401, origin);
+  const email = String(sess.user?.email || '').toLowerCase();
+  const roleInfo = await verifyRole(env, email);
+  if (!roleInfo.isDeveloper) return json({ error: 'Developer access required' }, 403, origin);
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'invalid JSON' }, 400, origin); }
+
+  const g = await bugLoadGuarded(request, env, origin, folderId);
+  if (g.err) return g.err;
+
+  // re-read the raw bug.txt (we need the exact text to patch)
+  let raw = '';
+  try {
+    const r = await fetch(`https://www.googleapis.com/drive/v3/files/${g.rec.bugTxtId}?alt=media`, { headers: g.headers });
+    if (!r.ok) throw new Error('bug.txt read failed');
+    raw = await r.text();
+  } catch (e) {
+    return json({ error: 'Could not read the report: ' + e.message }, 500, origin);
+  }
+
+  let next = raw;
+  const response = String(body.response || '').trim().slice(0, 4000);
+  if (response.length > 0) {
+    const stamp = istStamp();
+    const devName = (sess.user?.name || email.split('@')[0]).slice(0, 60);
+    if (next.includes('--- Developer responses ---\n(none yet)')) {
+      next = next.replace('--- Developer responses ---\n(none yet)',
+        '--- Developer responses ---\n[' + stamp + '] ' + devName + ' (' + email + '):\n' + response + '\n');
+    } else {
+      next = next.trimEnd() + '\n\n[' + stamp + '] ' + devName + ' (' + email + '):\n' + response + '\n';
+    }
+  }
+  const status = String(body.status || '');
+  if (status) {
+    if (!BUG_STATUSES.includes(status)) return json({ error: 'Status must be one of: ' + BUG_STATUSES.join(', ') }, 400, origin);
+    next = /^Status:.*$/m.test(next) ? next.replace(/^Status:.*$/m, 'Status: ' + status) : next.replace('\n\nMessage:', '\nStatus: ' + status + '\n\nMessage:');
+  }
+  if (next === raw) return json({ error: 'Nothing to update (send {response} and/or {status})' }, 400, origin);
+
+  try {
+    // PATCH the media content in place (keeps the same file id)
+    const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${g.rec.bugTxtId}?uploadType=media&fields=id,name`, {
+      method: 'PATCH',
+      headers: { ...g.headers, 'Content-Type': 'text/plain' },
+      body: next,
+    });
+    if (!r.ok) throw new Error('bug.txt update HTTP ' + r.status);
+    if (ctx) ctx.waitUntil(mirrorPut(env, g.rec.bugTxtId, 'bug.txt', 'text/plain', null, new TextEncoder().encode(next)));
+    return json({ ok: true, bug: bugTxtParse(next) }, 200, origin);
+  } catch (e) {
+    return json({ error: 'Update failed: ' + e.message }, 500, origin);
+  }
+}
+
 // —— Android app (XavierDrive) update manifest ——————————————————
 // Bump these when releasing a new APK — the app checks this on every launch.
 // apkUrl must point at the publicly-hosted APK on the Pages site.
 const APP_LATEST = {
-  versionCode: 20,
-  versionName: '1.1.7',
-  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.1.7.apk',
-  notes: "XavierDrive v1.1.7 — the Claude-collab release. AI chat redesigned: agentic answer steps with live action rows, native charts, copy boxes, pause/resume listening with live word highlight, Claude-style composer (Enter = new line, mic that appends instead of replacing, + menu with Generate image for everyone). Server: smart model router with per-role daily limits (students 30/day), Drive security hardened (scoped listings, staff-only deletes, email-spoofing closed). Update recommended for everyone."
+  versionCode: 21,
+  versionName: '1.1.8',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.1.8.apk',
+  notes: "XavierDrive v1.1.8 — the fixes + bug-report release. AI: usage counter now LIVES on the school server (no more resetting when you reopen the AI tab — the chip shows your real daily count instantly), asking for an image in chat now actually generates it, AI file outputs render reliably as file cards, and the send button becomes a STOP button while the AI is working so you can end a task mid-stream. NEW: Bug reports — Profile tab → Bug report: describe the bug (typing or voice), attach files and images; every report automatically includes your phone's specs and the app's last-hour activity log so developers can see exactly what happened; developers see every report, can respond to you and mark it Under review / Resolved / False; you see the status right there. Profile also gains a Latest log option for everyone (disable logging, view, download). Update recommended for everyone."
 };
 
 function handleAppVersion(origin) {
@@ -4774,6 +5224,22 @@ export default {
     if (path === '/api/stt' && request.method === 'POST') return handleSTT(request, env, origin);
     if (path === '/api/ai/memory' && (request.method === 'GET' || request.method === 'POST' || request.method === 'DELETE')) return handleAiMemory(request, env, origin);
     if (path === '/api/chats/dedup' && request.method === 'POST') return handleChatsDedup(request, env, origin);
+
+    // BUG REPORTS (v1.1.8) — everyone reports + reads their own; developers
+    // see all, respond and set status. Attachments ≤100MB (owner spec).
+    if (path === '/api/bugs' && request.method === 'POST') return handleBugReport(request, env, origin, ctx);
+    if (path === '/api/bugs' && request.method === 'GET') return handleBugList(request, env, origin, true);
+    if (path === '/api/bugs/mine' && request.method === 'GET') return handleBugList(request, env, origin, false);
+    const bugMatch = path.match(/^\/api\/bugs\/([A-Za-z0-9_-]{10,128})$/);
+    if (bugMatch) {
+      if (request.method === 'GET') return handleBugGet(request, env, origin, bugMatch[1]);
+      if (request.method === 'POST') return handleBugUpdate(request, env, origin, bugMatch[1], ctx);
+    }
+    const bugFileMatch = path.match(/^\/api\/bugs\/([A-Za-z0-9_-]{10,128})\/file$/);
+    if (bugFileMatch) {
+      if (request.method === 'POST') return handleBugAttach(request, env, origin, bugFileMatch[1], ctx);
+      if (request.method === 'GET') return handleBugFile(request, env, origin, bugFileMatch[1]);
+    }
 
     // Internal (server-to-server, X-Backend-Key gated)
     if (path === '/internal/ai/call' && request.method === 'POST') return handleInternalAICall(request, env);
