@@ -254,7 +254,7 @@ function runCommand(agent, command, timeoutMs) {
     const logFile = path.join(ws, 'terminal.log');
     const stamp = new Date().toISOString();
     try { fs.appendFileSync(logFile, `\n[${stamp}] $ ${command}\n`); } catch (e) {}
-    const child = spawn('/bin/bash', ['-c', command], { cwd: ws, env: { ...process.env, HOME: ws, TERM: 'dumb' }, timeout: timeoutMs || 20000 });
+    const child = spawn(process.env.XD_SHELL || '/bin/bash', ['-c', command], { cwd: ws, env: { ...process.env, HOME: ws, TERM: 'dumb' }, timeout: timeoutMs || 20000 });
     let out = '', err = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { err += d; });
@@ -765,11 +765,11 @@ const server = http.createServer(async (req, res) => {
       try { const s = fs.statfsSync ? fs.statfsSync(ROOT) : null; if (s) diskFree = s.bsize * s.bavail; } catch (e) {}
       return send(200, JSON.stringify({
         ok: true, uptime: Math.round(process.uptime()), rssMB: Math.round(process.memoryUsage().rss / 1048576),
-        node: process.version, server: 'xavierdrive-backend', version: '2.5.0',
-        storage: { root: '/storage/XavierDrive', usedBytes: dirSize(ROOT), files: buildTree(ROOT, '/', 0) ? countFiles(buildTree(ROOT, '/', 0)) : 0 },
+        node: process.version, server: 'xavierdrive-backend', version: '2.5.1', shell: process.env.XD_SHELL || '/bin/bash',
+        storage: { root: ROOT, usedBytes: dirSize(ROOT), files: buildTree(ROOT, '/', 0) ? countFiles(buildTree(ROOT, '/', 0)) : 0 },
       }));
     }
-    if (req.headers['x-backend-key'] !== KEY) return send(401, JSON.stringify({ error: 'bad or missing X-Backend-Key' }));
+    if (!KEY || req.headers['x-backend-key'] !== KEY) return send(401, JSON.stringify({ error: 'bad or missing X-Backend-Key' }));
 
     // PDF
     if (req.method === 'POST' && (p === '/pdf' || p === '/render')) {
@@ -1083,6 +1083,6 @@ function countFiles(node) {
 
 ensureDir(ROOT);
 ensureDir(AI_ROOT);
-server.listen(PORT, '0.0.0.0', () => LOG(`XavierDrive backend v2.5.0 on 0.0.0.0:${PORT} (node ${process.version}, pid ${process.pid}) storage=${ROOT} [AI: chat engine + terminal + search + AI-planned research + AI chat titles + pdf + usage-store] worker-proxy=${WORKER_URL}`));
+server.listen(PORT, '0.0.0.0', () => LOG(`XavierDrive backend v2.5.1 on 0.0.0.0:${PORT} (node ${process.version}, pid ${process.pid}, shell ${process.env.XD_SHELL || '/bin/bash'}) storage=${ROOT} [AI: chat engine + terminal + search + AI-planned research + AI chat titles + pdf + usage-store] worker-proxy=${WORKER_URL}`));
 process.on('uncaughtException', (e) => LOG(`uncaught: ${e.stack}`));
 process.on('unhandledRejection', (e) => LOG(`unhandled: ${e}`));

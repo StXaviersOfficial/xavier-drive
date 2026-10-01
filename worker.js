@@ -2479,6 +2479,23 @@ async function handlePDFFile(request, env, origin) {
   }
 }
 
+// —— XD Rig password gate (v1.1.9) ————————————————————————————————
+// GET /api/rig/verify?token=... — server-side check for the XD Rig companion
+// app's unlock gate. Reuses DEV_LOGIN_SECRET (the rig password IS the dev
+// secret), so no new worker secret is needed. No session is created — this
+// only ever says yes/no.
+async function handleRigVerify(request, env) {
+  if (!env.DEV_LOGIN_SECRET || String(env.DEV_LOGIN_SECRET).length < 24) {
+    return json({ ok: false, error: 'rig gate disabled' }, 404);
+  }
+  const url = new URL(request.url);
+  const token = url.searchParams.get('token') || '';
+  if (!token || !safeEqual(token, env.DEV_LOGIN_SECRET)) {
+    return json({ ok: false, error: 'bad password' }, 403);
+  }
+  return json({ ok: true, method: 'rig-verify' }, 200);
+}
+
 // —— Dev login (maintenance/testing backdoor) ————————————————————
 // Enabled only when DEV_LOGIN_SECRET is set as a worker secret. Creates a
 // developer session for the owner account so maintenance agents can test the
@@ -5198,10 +5215,10 @@ async function handleBugUpdate(request, env, origin, folderId, ctx) {
 // Bump these when releasing a new APK — the app checks this on every launch.
 // apkUrl must point at the publicly-hosted APK on the Pages site.
 const APP_LATEST = {
-  versionCode: 21,
-  versionName: '1.1.8',
-  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.1.8.apk',
-  notes: "XavierDrive v1.1.8 — the fixes + bug-report release. AI: usage counter now LIVES on the school server (no more resetting when you reopen the AI tab — the chip shows your real daily count instantly), asking for an image in chat now actually generates it, AI file outputs render reliably as file cards, and the send button becomes a STOP button while the AI is working so you can end a task mid-stream. NEW: Bug reports — Profile tab → Bug report: describe the bug (typing or voice), attach files and images; every report automatically includes your phone's specs and the app's last-hour activity log so developers can see exactly what happened; developers see every report, can respond to you and mark it Under review / Resolved / False; you see the status right there. Profile also gains a Latest log option for everyone (disable logging, view, download). Update recommended for everyone."
+  versionCode: 22,
+  versionName: '1.1.9',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.1.9.apk',
+  notes: "XavierDrive v1.1.9 - the security-fix release. Login flow: the OAuth completion signal is now accepted over HTTPS only (a plaintext redirect can never count as login-complete) and the Google sign-in page check matches by host instead of substring. Profile: photo edits encode the image once instead of twice. Bug reports: all endpoints unified on a single constant. Plus XD Rig companion app support: /api/rig/verify for the Rig password gate. Update recommended for everyone."
 };
 
 function handleAppVersion(origin) {
@@ -5280,6 +5297,7 @@ export default {
     if (path === '/admin/fb-check' && request.method === 'GET') return handleFBCheck(request, env);
 
     // Maintenance/testing backdoor (enabled only when DEV_LOGIN_SECRET is set)
+    if (path === '/api/rig/verify' && request.method === 'GET') return handleRigVerify(request, env);
     if (path === '/dev-login' && request.method === 'GET') return handleDevLogin(request, env);
 
     // User profile routes (name + photo saved to Firebase)
