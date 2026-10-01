@@ -16,7 +16,7 @@
 //    OPENROUTER_KEYS_JSON    — JSON array of OpenRouter keys (free models)
 //    CF_AI_KEYS_JSON         — JSON [{"token":"cfut_...","account":"<id>"}] Workers AI
 //    GEMINI_KEYS_JSON        — JSON array of Gemini API keys
-//    FIREBASE_DB_URL         — https://stxaviersapp-default-rtdb.firebaseio.com
+//    FIREBASE_DB_URL         — https://stxaviersapp-default-rtdb.asia-southeast1.firebasedatabase.app (owner created the instance in asia-southeast1 on 2026-10-01; the token mint MUST carry BOTH scopes firebase.database + userinfo.email or the regional endpoint answers 401 "Unauthorized request.")
 //    STUDENT_GEMINI_LIMIT    — "30" (text variable)
 // ============================================================
 
@@ -2971,7 +2971,7 @@ async function fbAuthToken(env) {
     const header = b64urlFromJson({ alg: 'RS256', typ: 'JWT' });
     const payload = b64urlFromJson({
       iss: sa.client_email,
-      scope: 'https://www.googleapis.com/auth/firebase.database',
+      scope: 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email',
       aud: sa.token_uri,
       iat: now,
       exp: now + 3600,
@@ -3043,6 +3043,37 @@ async function firebaseDelete(env, path) {
   try {
     await fetch(await fbAuthUrl(env, `${dbUrl}/${path}.json`), { method: 'DELETE' });
   } catch (e) {}
+}
+
+/** Diagnostic: Firebase RTDB mirror self-test (X-Backend-Key protected).
+ *  v1.1.8 hotfix 2026-10-01: proves the token mint (BOTH scopes — the regional
+ *  asia-southeast1 endpoint answers 401 with a single-scope token) + the
+ *  FIREBASE_DB_URL value + the write/read/delete path, live from inside the
+ *  worker. Clears the token cache first so the answer is always fresh. */
+async function handleFBCheck(request, env) {
+  if (!backendKeyOk(request, env)) return json({ error: 'unauthorized' }, 401);
+  const out = { dbUrl: env.FIREBASE_DB_URL || null, saConfigured: false, mint: null, write: null, read: null, del: null };
+  let sa = null;
+  try { sa = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT || 'null'); } catch (e) { sa = null; }
+  out.saConfigured = !!(sa && sa.client_email && sa.private_key && sa.token_uri);
+  _fbToken = null; _fbTokenExp = 0;   // force a fresh mint for a truthful answer
+  const tok = await fbAuthToken(env);
+  out.mint = tok ? 'ok (' + tok.length + ' chars)' : 'FAILED (check FIREBASE_SERVICE_ACCOUNT)';
+  if (!tok || !env.FIREBASE_DB_URL) return json(out, 200);
+  const au = env.FIREBASE_DB_URL.replace(/\/+$/, '') + '/_fb_check.json?access_token=' + encodeURIComponent(tok);
+  try {
+    const r = await fetch(au, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ at: Date.now() }), signal: AbortSignal.timeout(10000) });
+    out.write = { status: r.status, body: (await r.text()).slice(0, 120) };
+  } catch (e) { out.write = { error: e.message }; }
+  try {
+    const r = await fetch(au, { signal: AbortSignal.timeout(10000) });
+    out.read = { status: r.status, body: (await r.text()).slice(0, 120) };
+  } catch (e) { out.read = { error: e.message }; }
+  try {
+    const r = await fetch(au, { method: 'DELETE', signal: AbortSignal.timeout(10000) });
+    out.del = { status: r.status };
+  } catch (e) { out.del = { error: e.message }; }
+  return json(out, 200);
 }
 
 // —— Live Class: Start broadcast ————————————————————
@@ -5246,6 +5277,7 @@ export default {
 
     // Admin (X-Backend-Key gated diagnostics — never leaks key values)
     if (path === '/admin/ai-status' && request.method === 'GET') return handleAIStatus(request, env);
+    if (path === '/admin/fb-check' && request.method === 'GET') return handleFBCheck(request, env);
 
     // Maintenance/testing backdoor (enabled only when DEV_LOGIN_SECRET is set)
     if (path === '/dev-login' && request.method === 'GET') return handleDevLogin(request, env);
