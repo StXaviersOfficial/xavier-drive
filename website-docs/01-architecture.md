@@ -88,7 +88,7 @@ request. If you only read one document, read this one.
   files through the proxy; nobody else can read the Drive.
 
 ### 1.5 Firebase Realtime Database — the "live" state
-- **URL:** `https://stxaviers-official-default-rtdb.firebaseio.com`
+- **URL:** `https://stxaviersapp-default-rtdb.firebaseio.com`
 - **Used for:** live-class chat messages, raised hands, the attendance
   register + daily marks, and (historically) class/subject list overrides.
 - **Access:** direct REST calls from the browser (`GET/PUT/POST/DELETE
