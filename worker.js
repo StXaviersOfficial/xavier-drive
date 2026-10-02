@@ -5215,10 +5215,10 @@ async function handleBugUpdate(request, env, origin, folderId, ctx) {
 // Bump these when releasing a new APK — the app checks this on every launch.
 // apkUrl must point at the publicly-hosted APK on the Pages site.
 const APP_LATEST = {
-  versionCode: 22,
-  versionName: '1.1.9',
-  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.1.9.apk',
-  notes: "XavierDrive v1.1.9 - the security-fix release. Login flow: the OAuth completion signal is now accepted over HTTPS only (a plaintext redirect can never count as login-complete) and the Google sign-in page check matches by host instead of substring. Profile: photo edits encode the image once instead of twice. Bug reports: all endpoints unified on a single constant. Plus XD Rig companion app support: /api/rig/verify for the Rig password gate. Update recommended for everyone."
+  versionCode: 23,
+  versionName: '1.2.0',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.2.0.apk',
+  notes: "XavierDrive v1.2.0 - the fix-you-asked-for release. Bug report: the screen that crashed since 1.1.8 is now crash-proofed - whatever happens, it opens and shows any error in red inside the app instead of crashing. Latest log: now exactly three options - Enable/Disable logging (state-aware), latestlog.txt which opens the log inside the app with a Download button at the top, and What is logging? explaining it all. Update recommended for everyone."
 };
 
 function handleAppVersion(origin) {
