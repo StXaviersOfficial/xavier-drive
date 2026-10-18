@@ -274,6 +274,39 @@ async function handleOwnerLogin(env, origin) {
   return new Response(null, { status: 302, headers });
 }
 
+// —— Device tunnel registry (self-healing bridge discovery, 2026-10-18) ——
+// The owner's phone (termux/start-bridge.sh) POSTs its current trycloudflare
+// URL here every time the tunnel (re)starts; the main agent GETs it to
+// auto-discover the bridge — no more pasting tunnel URLs in chat.
+// Auth: X-Device-Key (== DEVICE_KEY secret) OR X-Backend-Key.
+async function handleDeviceTunnel(request, env) {
+  const dk = request.headers.get('X-Device-Key') || '';
+  const devOk = !!(env.DEVICE_KEY && dk === env.DEVICE_KEY);
+  if (!devOk && !backendKeyOk(request, env)) {
+    return json({ ok: false, error: 'unauthorized' }, 401);
+  }
+  if (request.method === 'GET') {
+    const raw = await env.KV_SESSIONS.get('__device_tunnel__');
+    if (!raw) return json({ ok: false, error: 'no tunnel registered yet' }, 404);
+    try {
+      const t = JSON.parse(raw);
+      return json({ ok: true, url: t.url, seen: t.seen,
+                    age_sec: Math.round((Date.now() - (t.seen || 0)) / 1000) });
+    } catch (e) { return json({ ok: false, error: 'corrupt entry' }, 500); }
+  }
+  if (request.method === 'POST') {
+    let body;
+    try { body = await request.json(); } catch (e) { return json({ ok: false, error: 'invalid JSON' }, 400); }
+    const u = String(body.url || '').trim();
+    if (!/^https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com$/.test(u)) {
+      return json({ ok: false, error: 'url must be a trycloudflare.com host' }, 400);
+    }
+    await env.KV_SESSIONS.put('__device_tunnel__', JSON.stringify({ url: u, seen: Date.now() }));
+    return json({ ok: true, url: u });
+  }
+  return json({ ok: false, error: 'method not allowed' }, 405);
+}
+
 async function handleOwnerCallback(request, env, code) {
   const FRONTEND = env.FRONTEND_URL || 'https://stxaviers.pages.dev';
   if (!code) return ownerResultPage(false, 'No authorization code returned by Google.');
@@ -5274,6 +5307,9 @@ export default {
 
     // Internal (server-to-server, X-Backend-Key gated)
     if (path === '/internal/ai/call' && request.method === 'POST') return handleInternalAICall(request, env);
+
+    // Device tunnel registry (self-healing bridge discovery — 2026-10-18)
+    if (path === '/internal/device-tunnel') return handleDeviceTunnel(request, env);
 
     // Admin (X-Backend-Key gated diagnostics — never leaks key values)
     if (path === '/admin/ai-status' && request.method === 'GET') return handleAIStatus(request, env);
