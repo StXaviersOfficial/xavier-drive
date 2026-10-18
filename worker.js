@@ -274,6 +274,79 @@ async function handleOwnerLogin(env, origin) {
   return new Response(null, { status: 302, headers });
 }
 
+// —— Device bridge proxy (2026-10-18 S24) — ETERNAL bridge URL ——
+// The XD Assist app / agent tools point at THIS worker (its URL never
+// changes); these handlers forward to the phone's live tunnel, resolved
+// fresh from the KV registry on every request. Auth: the device key,
+// sent as X-Device-Key OR X-Backend-Key (the assist app's header name).
+function bridgeKeyOk(request, env) {
+  const dk = request.headers.get('X-Device-Key') || '';
+  const bk = request.headers.get('X-Backend-Key') || '';
+  return !!(env.DEVICE_KEY && (dk === env.DEVICE_KEY || bk === env.DEVICE_KEY));
+}
+
+async function bridgeTunnelUrl(env) {
+  try {
+    const raw = await env.KV_SESSIONS.get('__device_tunnel__');
+    if (!raw) return null;
+    const t = JSON.parse(raw);
+    return t && t.url ? t.url : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function handleBridgeHealth(request, env) {
+  if (!bridgeKeyOk(request, env)) {
+    return json({ ok: false, error: 'unauthorized' }, 401);
+  }
+  const tunnel = await bridgeTunnelUrl(env);
+  if (!tunnel) {
+    return json({ ok: true, service: 'xd-bridge-proxy', tunnel: 'none registered' });
+  }
+  try {
+    const upstream = await fetch(tunnel + '/health', {
+      headers: { 'X-Backend-Key': request.headers.get('X-Backend-Key') || request.headers.get('X-Device-Key') || '' },
+    });
+    const body = await upstream.text();
+    return new Response(body, {
+      status: upstream.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (e) {
+    return json({ ok: false, service: 'xd-bridge-proxy', error: 'tunnel unreachable: ' + e }, 502);
+  }
+}
+
+async function handleBridgeProxy(request, env, url) {
+  if (!bridgeKeyOk(request, env)) {
+    return json({ ok: false, error: 'unauthorized' }, 401);
+  }
+  const tunnel = await bridgeTunnelUrl(env);
+  if (!tunnel) {
+    return json({ ok: false, error: 'no bridge tunnel registered (phone offline?)' }, 503);
+  }
+  try {
+    const init = {
+      method: request.method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Backend-Key': request.headers.get('X-Backend-Key') || request.headers.get('X-Device-Key') || '',
+      },
+    };
+    if (request.method === 'POST') init.body = await request.text();
+    // /rig/next-cmd long-polls up to ~10s — acceptable subrequest wait.
+    const upstream = await fetch(tunnel + url.pathname + url.search, init);
+    const body = await upstream.text();
+    return new Response(body, {
+      status: upstream.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (e) {
+    return json({ ok: false, error: 'tunnel unreachable: ' + e }, 502);
+  }
+}
+
 // —— Device tunnel registry (self-healing bridge discovery, 2026-10-18) ——
 // The owner's phone (termux/start-bridge.sh) POSTs its current trycloudflare
 // URL here every time the tunnel (re)starts; the main agent GETs it to
@@ -5260,12 +5333,24 @@ export default {
     // /api/auth/mobile is also exempt: the Android app is a native client
     // (no Origin header) and the request carries its own proof (a verified
     // Google ID token) instead of relying on ambient cookies.
-    if (path !== '/callback' && !path.startsWith('/internal/') && path !== '/api/auth/mobile') {
+    // /health + /rig/* are the device-bridge proxy endpoints: native XD
+    // Assist app + agent tools, key-authenticated, no cookies involved.
+    if (path !== '/callback' && !path.startsWith('/internal/') && path !== '/api/auth/mobile'
+        && path !== '/health' && !path.startsWith('/rig/')) {
       const csrf = csrfCheck(request, origin);
       if (csrf) return csrf;
     }
 
     // Existing routes
+
+    // —— Device bridge proxy (2026-10-18 S24) — the ETERNAL bridge URL ——
+    // The XD Assist app and agent tools can point at the WORKER (this
+    // URL never changes); these routes forward to the phone's live
+    // trycloudflare tunnel, which is resolved fresh from the KV registry
+    // on every request. Tunnel restarts become invisible.
+    if (path === '/health') return handleBridgeHealth(request, env);
+    if (path === '/rig/next-cmd' && request.method === 'GET') return handleBridgeProxy(request, env, url);
+    if (path === '/rig/result' && request.method === 'POST') return handleBridgeProxy(request, env, url);
     if (path === '/login') return handleLogin(env, origin);
     if (path === '/owner-login') return handleOwnerLogin(env, origin);
     if (path === '/callback') return handleCallback(request, env);
