@@ -5304,10 +5304,10 @@ async function handleBugUpdate(request, env, origin, folderId, ctx) {
 // Bump these when releasing a new APK — the app checks this on every launch.
 // apkUrl must point at the publicly-hosted APK on the Pages site.
 const APP_LATEST = {
-  versionCode: 23,
-  versionName: '1.2.0',
-  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.2.0.apk',
-  notes: "XavierDrive v1.2.0 - the fix-you-asked-for release. Bug report: the screen that crashed since 1.1.8 is now crash-proofed - whatever happens, it opens and shows any error in red inside the app instead of crashing. Latest log: now exactly three options - Enable/Disable logging (state-aware), latestlog.txt which opens the log inside the app with a Download button at the top, and What is logging? explaining it all. Update recommended for everyone."
+  versionCode: 24,
+  versionName: '1.2.1',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.2.1.apk',
+  notes: "XavierDrive v1.2.1 - the empty bug-report hub is FIXED. Root cause: the content frame was declared as the wrong view type since 1.1.8, so the hub silently rendered nothing every time. Now the hub opens with all its cards, every step is logged to latestlog.txt, and the error fallback can never fail silently again. Update recommended for everyone."
 };
 
 function handleAppVersion(origin) {
