@@ -53,7 +53,14 @@ function parseCookies(header) {
   if (!header) return out;
   for (const part of header.split(';')) {
     const [k, ...v] = part.trim().split('=');
-    if (k) out[k.trim()] = decodeURIComponent(v.join('='));
+    if (k) {
+      let val = v.join('=');
+      // S25 (W-07): malformed percent-sequences used to throw URIError and
+      // 500 the whole route. Keep the raw value instead — never trust, but
+      // also never crash on attacker-controlled cookie bytes.
+      try { val = decodeURIComponent(val); } catch (e) { /* keep raw */ }
+      out[k.trim()] = val;
+    }
   }
   return out;
 }
@@ -282,7 +289,10 @@ async function handleOwnerLogin(env, origin) {
 function bridgeKeyOk(request, env) {
   const dk = request.headers.get('X-Device-Key') || '';
   const bk = request.headers.get('X-Backend-Key') || '';
-  return !!(env.DEVICE_KEY && (dk === env.DEVICE_KEY || bk === env.DEVICE_KEY));
+  // S25 (W-26): timing-safe + fail-closed, exactly like backendKeyOk — an
+  // unset or too-short DEVICE_KEY can never authenticate anything.
+  if (!env.DEVICE_KEY || String(env.DEVICE_KEY).length < 16) return false;
+  return safeEqual(dk, env.DEVICE_KEY) || safeEqual(bk, env.DEVICE_KEY);
 }
 
 async function bridgeTunnelUrl(env) {
@@ -300,21 +310,37 @@ async function handleBridgeHealth(request, env) {
   if (!bridgeKeyOk(request, env)) {
     return json({ ok: false, error: 'unauthorized' }, 401);
   }
-  const tunnel = await bridgeTunnelUrl(env);
+  let tunnel = null, age = null;
+  try {
+    const raw = await env.KV_SESSIONS.get('__device_tunnel__');
+    if (raw) {
+      const t = JSON.parse(raw);
+      tunnel = t && t.url ? t.url : null;
+      age = t && t.seen ? Math.round((Date.now() - t.seen) / 1000) : null;
+    }
+  } catch (e) {}
   if (!tunnel) {
     return json({ ok: true, service: 'xd-bridge-proxy', tunnel: 'none registered' });
   }
   try {
     const upstream = await fetch(tunnel + '/health', {
       headers: { 'X-Backend-Key': request.headers.get('X-Backend-Key') || request.headers.get('X-Device-Key') || '' },
+      signal: AbortSignal.timeout(10000),
     });
+    // S25 (W-03): a dead quick-tunnel surfaces as Cloudflare 530/1016 —
+    // hand the app a STRUCTURED error, never the raw edge body.
+    if (upstream.status >= 500) {
+      return json({ ok: false, service: 'xd-bridge-proxy', tunnel, age_sec: age,
+                    error: 'tunnel unreachable (upstream HTTP ' + upstream.status + ') — the phone bridge is offline; it heals itself when the tunnel re-registers' }, 502);
+    }
     const body = await upstream.text();
     return new Response(body, {
       status: upstream.status,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (e) {
-    return json({ ok: false, service: 'xd-bridge-proxy', error: 'tunnel unreachable: ' + e }, 502);
+    return json({ ok: false, service: 'xd-bridge-proxy', tunnel, age_sec: age,
+                  error: 'tunnel unreachable: ' + (e && e.message ? e.message : e) }, 502);
   }
 }
 
@@ -333,17 +359,24 @@ async function handleBridgeProxy(request, env, url) {
         'Content-Type': 'application/json',
         'X-Backend-Key': request.headers.get('X-Backend-Key') || request.headers.get('X-Device-Key') || '',
       },
+      // /rig/next-cmd long-polls up to ~10s — cap the subrequest wait.
+      signal: AbortSignal.timeout(30000),
     };
     if (request.method === 'POST') init.body = await request.text();
-    // /rig/next-cmd long-polls up to ~10s — acceptable subrequest wait.
     const upstream = await fetch(tunnel + url.pathname + url.search, init);
+    // S25 (W-03): structured 502 on dead-tunnel upstream errors — the assist
+    // app's poll loop retries on any non-2xx, and a clean JSON error beats
+    // a raw Cloudflare 530/1016 page every time.
+    if (upstream.status >= 500) {
+      return json({ ok: false, error: 'tunnel unreachable (upstream HTTP ' + upstream.status + ') — the phone bridge is offline; it heals itself when the tunnel re-registers' }, 502);
+    }
     const body = await upstream.text();
     return new Response(body, {
       status: upstream.status,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (e) {
-    return json({ ok: false, error: 'tunnel unreachable: ' + e }, 502);
+    return json({ ok: false, error: 'tunnel unreachable: ' + (e && e.message ? e.message : e) }, 502);
   }
 }
 
@@ -438,8 +471,15 @@ async function handleOwnerCallback(request, env, code) {
   }
 }
 
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function ownerResultPage(ok, message) {
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>XavierDrive \u2014 Owner Login</title><style>body{font-family:system-ui,-apple-system,sans-serif;background:#07080f;color:#fff;display:flex;min-height:100vh;margin:0;align-items:center;justify-content:center}.card{background:#111527;padding:32px;border-radius:16px;max-width:440px;text-align:center}h1{font-size:20px;margin:0 0 12px}p{font-size:14px;line-height:1.55;color:#c7cbe0}a{color:#7c9aff}</style></head><body><div class="card"><h1>${ok ? 'Owner token saved' : 'Owner login failed'}</h1><p>${message}</p><p><a href="https://stxaviers.pages.dev">Back to XavierDrive</a></p></div></body></html>`;
+  // S25 (W-05): message content is escaped — network error strings and
+  // account names must never inject into the result page.
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>XavierDrive \u2014 Owner Login</title><style>body{font-family:system-ui,-apple-system,sans-serif;background:#07080f;color:#fff;display:flex;min-height:100vh;margin:0;align-items:center;justify-content:center}.card{background:#111527;padding:32px;border-radius:16px;max-width:440px;text-align:center}h1{font-size:20px;margin:0 0 12px}p{font-size:14px;line-height:1.55;color:#c7cbe0}a{color:#7c9aff}</style></head><body><div class="card"><h1>${ok ? 'Owner token saved' : 'Owner login failed'}</h1><p>${escapeHtml(message)}</p><p><a href="https://stxaviers.pages.dev">Back to XavierDrive</a></p></div></body></html>`;
   return new Response(html, { status: ok ? 200 : 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
 
@@ -2807,7 +2847,7 @@ DESIGN GUIDELINES:
 - For Q&A/exercises: number questions, prefix answers with "Ans.", underline fill-in-the-blank answers
 - For notes: use sections with colored headers, bullet points, key terms in bold
 - Page margins: 2cm all sides in print
-- Font size: 11pt body, 16pt title, 13pt headings
+- Font size: 5600916pt body, 16pt title, 13pt headings
 - NO page numbers in the HTML (browser adds them in print)
 - Make it look like a professionally designed school worksheet/notes document
 
@@ -2954,8 +2994,11 @@ async function verifyRole(env, email) {
       const userData = await userRes.json();
 
       if (userData.files) {
+        // S25 (W-11): local-part matching removed — a marker named "rajesh"
+        // used to grant teacher rights to rajesh@ANY-domain. All live
+        // markers are full emails, so nothing legitimate depends on it.
         isTeacher = userData.files.some(f =>
-          f.name === email || f.description === email || f.name === email.split('@')[0]
+          f.name === email || f.description === email
         );
       }
     }
@@ -2971,8 +3014,9 @@ async function verifyRole(env, email) {
       const adminData = await adminRes.json();
 
       if (adminData.files) {
+        // S25 (W-11): local-part matching removed here too (see above).
         isAdmin = adminData.files.some(f =>
-          f.name === email || f.description === email || f.name === email.split('@')[0]
+          f.name === email || f.description === email
         );
         if (isAdmin) isTeacher = true;
       }
@@ -5304,10 +5348,10 @@ async function handleBugUpdate(request, env, origin, folderId, ctx) {
 // Bump these when releasing a new APK — the app checks this on every launch.
 // apkUrl must point at the publicly-hosted APK on the Pages site.
 const APP_LATEST = {
-  versionCode: 24,
-  versionName: '1.2.1',
-  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.2.1.apk',
-  notes: "XavierDrive v1.2.1 - the empty bug-report hub is FIXED. Root cause: the content frame was declared as the wrong view type since 1.1.8, so the hub silently rendered nothing every time. Now the hub opens with all its cards, every step is logged to latestlog.txt, and the error fallback can never fail silently again. Update recommended for everyone."
+  versionCode: 25,
+  versionName: '1.2.2',
+  apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.2.2.apk',
+  notes: "XavierDrive v1.2.2 - dashboard 'Latest notice' now aggregates every class folder, and updates are integrity-checked: the APK's SHA-256 is verified before anything is offered for install. Plus the S25 full-sweep hardening (bridge error reporting, cookie-crash fix, role matching tightened). Update recommended for everyone."
 };
 
 function handleAppVersion(origin) {
@@ -5472,6 +5516,11 @@ export default {
       if (request.method === 'POST') return handlePresetSharedImport(request, env, origin, id);
     }
 
+    // S25 (W-21): unknown API/internal/admin paths now 404 — clients with
+    // typos used to get a 200 {ok:true} and silently mis-parse it.
+    if (path.startsWith('/api/') || path.startsWith('/internal/') || path.startsWith('/admin/')) {
+      return json({ error: 'Not found' }, 404, origin);
+    }
     return json({ ok: true, message: 'XavierDrive Worker' }, 200, origin);
   },
 
