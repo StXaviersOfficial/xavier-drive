@@ -5351,6 +5351,8 @@ const APP_LATEST = {
   versionCode: 25,
   versionName: '1.2.2',
   apkUrl: 'https://stxaviers.pages.dev/apk/xavierdrive1.2.2.apk',
+  sha256: '4fb08c4319f8097640fee4dc895fdccfdacb5c7df5c4bb94a403cac9601da7ac',
+  size: 5600916,
   notes: "XavierDrive v1.2.2 - dashboard 'Latest notice' now aggregates every class folder, and updates are integrity-checked: the APK's SHA-256 is verified before anything is offered for install. Plus the S25 full-sweep hardening (bridge error reporting, cookie-crash fix, role matching tightened). Update recommended for everyone."
 };
 
